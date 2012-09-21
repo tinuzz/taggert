@@ -33,7 +33,7 @@ Mapviewer.py is copyright (C) Hadley Rich 2008 <hads@nice.net.nz>
 Changelog:
 
 2012-09-21 - Create a second column in the file list, displaying the EXIF
-             DateTime
+             DateTime. Add File menu items.
 2012-09-20 - Take 'mapviewer.py' and add some GTK widgets, like menubar and file
 					   list. The directory with JPG files is hardcoded, until a
              'Open directory' dialog has been added.
