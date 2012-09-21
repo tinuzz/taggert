@@ -1,4 +1,4 @@
 pygtk-geotagger
 ===============
 
-PyGTK Geotagger application
+PyGTK Geotagging application
