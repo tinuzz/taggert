@@ -64,6 +64,7 @@ class UI(gtk.Window):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
 
         self.set_default_size(800, 600)
+        self.set_position(gtk.WIN_POS_CENTER)
         self.connect('destroy', lambda x: gtk.main_quit())
         self.set_title('PyGTK Geotagger')
 
@@ -74,6 +75,19 @@ class UI(gtk.Window):
         filemenu = gtk.Menu()
         filem = gtk.MenuItem("File")
         filem.set_submenu(filemenu)
+
+        openm = gtk.ImageMenuItem(gtk.STOCK_OPEN)
+        openm.connect("activate", self.select_dir)
+        filemenu.append(openm)
+
+        sep = gtk.SeparatorMenuItem()
+        filemenu.append(sep)
+
+        #exit = gtk.MenuItem("Exit")
+        exit = gtk.ImageMenuItem(gtk.STOCK_QUIT)
+        exit.connect("activate", gtk.main_quit)
+        filemenu.append(exit)
+
         mb.append(filem)
         self.vbox0.pack_start(mb, False, False, 0)
 
@@ -100,16 +114,13 @@ class UI(gtk.Window):
         cell = gtk.CellRendererText()
         #cell.set_property('cell-background', 'cyan')
         col0 = gtk.TreeViewColumn('Filename', cell, text=0)
-        col0.pack_start(cell, True)
         col0.set_min_width(180)
         col0.set_sort_column_id(0)
         treeview.append_column(col0)
 
         cell = gtk.CellRendererText()
         #cell.set_property('cell-background', 'cyan')
-        col1 = gtk.TreeViewColumn('EXIF DateTime')
-        col1.pack_start(cell, True)
-        col1.set_attributes(cell, text=1)
+        col1 = gtk.TreeViewColumn('EXIF DateTime', cell, text=1)
         col1.set_min_width(180)
         col1.set_sort_column_id(1)
         treeview.append_column(col1)
@@ -240,6 +251,17 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         self.vbox.pack_end(hbox, False)
 
         gobject.timeout_add(500, self.print_tiles)
+
+    def select_dir(self, widget):
+        #md = gtk.MessageDialog(self,
+        #    gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_INFO,
+        #    gtk.BUTTONS_CLOSE, "Download completed")
+        #md.run()
+        #md.destroy()
+        chooser = gtk.FileChooserDialog(title='Select folder',action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+        chooser.run()
+        chooser.destroy()
 
     def disable_cache_toggled(self, btn):
         if btn.props.active:
