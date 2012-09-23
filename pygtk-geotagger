@@ -32,7 +32,7 @@ mydir = os.path.dirname(os.path.abspath(__file__))
 libdir = os.path.abspath(os.path.join(mydir, "..", "python", ".libs"))
 sys.path.insert(0, libdir)
 
-import osmgpsmap
+import osmgpsmap  # apt-get install python-osmgpsmap
 print "using library: %s (version %s)" % (osmgpsmap.__file__, osmgpsmap.__version__)
 
 assert osmgpsmap.__version__ == "0.7.3"
@@ -63,7 +63,7 @@ class UI(gtk.Window):
     def __init__(self):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
 
-        self.set_default_size(800, 600)
+        self.set_default_size(1024, 768)
         self.set_position(gtk.WIN_POS_CENTER)
         self.connect('destroy', lambda x: gtk.main_quit())
         self.set_title('PyGTK Geotagger')
@@ -71,30 +71,13 @@ class UI(gtk.Window):
         self.vbox0 = gtk.VBox(False,0)
         self.add(self.vbox0)
 
-        mb = gtk.MenuBar()
-        filemenu = gtk.Menu()
-        filem = gtk.MenuItem("File")
-        filem.set_submenu(filemenu)
-
-        openm = gtk.ImageMenuItem(gtk.STOCK_OPEN)
-        openm.connect("activate", self.select_dir)
-        filemenu.append(openm)
-
-        sep = gtk.SeparatorMenuItem()
-        filemenu.append(sep)
-
-        #exit = gtk.MenuItem("Exit")
-        exit = gtk.ImageMenuItem(gtk.STOCK_QUIT)
-        exit.connect("activate", gtk.main_quit)
-        filemenu.append(exit)
-
-        mb.append(filem)
-        self.vbox0.pack_start(mb, False, False, 0)
+        self.ui_menu ()
 
         self.hbox0 = gtk.HBox(False, 0)
         self.vbox0.pack_start(self.hbox0)
 
-        mydir='/home/martijn/Data/images/foto-video/iphion'
+        #mydir='/home/martijn/Data/images/foto-video/iphion'
+        mydir='/home/martijn/Pictures/2012'
 
         store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
 
@@ -121,7 +104,7 @@ class UI(gtk.Window):
         cell = gtk.CellRendererText()
         #cell.set_property('cell-background', 'cyan')
         col1 = gtk.TreeViewColumn('EXIF DateTime', cell, text=1)
-        col1.set_min_width(180)
+        col1.set_min_width(140)
         col1.set_sort_column_id(1)
         treeview.append_column(col1)
 
@@ -146,6 +129,21 @@ class UI(gtk.Window):
         #ok.set_size_request(70, 30)
         #self.vbox1.pack_start(ok)
 
+        self.combobox = gtk.combo_box_new_text()
+        self.vbox.pack_start(self.combobox, False, False)
+        self.combobox.append_text("OpenStreetMap")
+        self.combobox.append_text("Google Maps")
+        self.combobox.append_text("MapQuest OSM")
+        self.combobox.append_text("MapQuest Open Aerial")
+        self.combobox.append_text("OpenCycleMap")
+        self.combobox.append_text("Google Aerial")
+        self.combobox.append_text("Google Aerial with streets")
+        self.combobox.append_text("Google Terrain")
+        self.combobox.append_text("Google Terrain with streets")
+        self.combobox.set_active(0)
+        self.combobox.connect('changed', self.combobox_changed)
+
+
         if 0:
             self.osm = DummyMapNoGpsPoint()
         else:
@@ -158,6 +156,7 @@ class UI(gtk.Window):
                     DummyLayer())
 
         self.osm.connect('button_release_event', self.map_clicked)
+        self.osm.connect('button_press_event', self.map_clicked2)
 
         #connect keyboard shortcuts
         self.osm.set_keyboard_shortcut(osmgpsmap.KEY_FULLSCREEN, gtk.gdk.keyval_from_name("F11"))
@@ -252,6 +251,38 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
 
         gobject.timeout_add(500, self.print_tiles)
 
+    def ui_menu (self):
+
+        # Menubar
+        self.mb = gtk.MenuBar()
+        self.vbox0.pack_start(self.mb, False, False, 0)
+
+        # File menu
+        filemenu = gtk.Menu()
+        filem = gtk.MenuItem("File")
+        self.mb.append(filem)
+        filem.set_submenu(filemenu)
+
+        # Open file
+        openm = gtk.ImageMenuItem(gtk.STOCK_OPEN)
+        openm.connect("activate", self.select_dir)
+        filemenu.append(openm)
+
+        sep = gtk.SeparatorMenuItem()
+        filemenu.append(sep)
+
+        # Quit
+        exit = gtk.ImageMenuItem(gtk.STOCK_QUIT)
+        exit.connect("activate", gtk.main_quit)
+        filemenu.append(exit)
+
+        # Help menu
+        helpmenu = gtk.Menu()
+        helpm = gtk.MenuItem("Help")
+        self.mb.append(helpm)
+        helpm.set_submenu(helpmenu)
+
+
     def select_dir(self, widget):
         #md = gtk.MessageDialog(self,
         #    gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_INFO,
@@ -272,7 +303,49 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
     def on_show_tooltips_toggled(self, btn):
         self.show_tooltips = btn.props.active
 
+    def combobox_changed (self, combobox):
+        model = combobox.get_model()
+        index = combobox.get_active()
+        self.latlon_entry.set_text(str(index))
+        # Use http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z for Google maps
+        # Use http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg for Mapquest-OSM
+        # Use http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg for Mapquest Open Aerial satellite images
+        # Use http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png for Opencyclemap
+        if index == 0:
+            self.repouri_entry.set_text('http://tile.openstreetmap.org/#Z/#X/#Y.png')
+            self.image_format_entry.set_text('png')
+        elif index == 1:
+            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z')
+            self.image_format_entry.set_text('png')
+        elif index == 2:
+            self.repouri_entry.set_text('http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg')
+            self.image_format_entry.set_text('jpg')
+        elif index == 3:
+            self.repouri_entry.set_text('http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg')
+            self.image_format_entry.set_text('jpg')
+        elif index == 4:
+            self.repouri_entry.set_text('http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png')
+            self.image_format_entry.set_text('png')
+        elif index == 5:
+            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X&y=#Y&z=#Z')
+            self.image_format_entry.set_text('png')
+        elif index == 6:
+            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X&y=#Y&z=#Z')
+            self.image_format_entry.set_text('png')
+        elif index == 7:
+            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X&y=#Y&z=#Z')
+            self.image_format_entry.set_text('png')
+        elif index == 8:
+            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z')
+            self.image_format_entry.set_text('png')
+
+        self.load_map_clicked (0)
+        self.vbox.reorder_child(self.combobox,1)
+
     def load_map_clicked(self, button):
+        tmpzoom = self.osm.props.zoom
+        tmplat = self.osm.props.latitude
+        tmplon = self.osm.props.longitude
         uri = self.repouri_entry.get_text()
         format = self.image_format_entry.get_text()
         if uri and format:
@@ -290,6 +363,8 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
 
             self.vbox.pack_start(self.osm, True)
             self.osm.connect('button_release_event', self.map_clicked)
+            self.osm.connect('button_press_event', self.map_clicked2)
+            self.osm.set_center_and_zoom(tmplat, tmplon, tmpzoom)
             self.osm.show()
 
     def print_tiles(self):
@@ -327,6 +402,10 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
             zoom_end=self.osm.props.max_zoom
         )
 
+    def map_clicked2 (self, osm, event):
+        if event.type == gtk.gdk._2BUTTON_PRESS:
+            self.zoom_in_clicked(0)
+
     def map_clicked(self, osm, event):
         lat,lon = self.osm.get_event_location(event).get_degrees()
         if event.button == 1:
@@ -340,7 +419,7 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
             self.osm.gps_add(lat, lon, heading=osmgpsmap.INVALID);
         elif event.button == 3:
             self.osm.image_remove_all()
-            pb = gtk.gdk.pixbuf_new_from_file_at_size ("poi.png", 24,24)
+            pb = gtk.gdk.pixbuf_new_from_file_at_size ("crosshair.png", 24,24)
             self.osm.image_add(lat,lon,pb)
             self.latlon_entry.set_text(
                 'Marker: latitude %s longitude %s' % (lat, lon)
