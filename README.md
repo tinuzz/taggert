@@ -30,7 +30,7 @@ Code taken from GPX Viewer (C) 2009 Andrew Gee <andrew@andrewgee.org>
 [2] http://www.johnstowers.co.nz/blog/index.php/tag/osmgpsmap/
 [3] http://tilloy.net/dev/pyexiv2/index.html
 [4] https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py
-[5] http://blog.sarine.nl/gpx-viewer/
+[5] http://andrewgee.org/blog/projects/gpxviewer/
 
 Changelog:
 
