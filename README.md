@@ -18,20 +18,23 @@ The idea is simple:
 Please refer to the changelog below to see what has been implemented so far.
 This project also serves as a learning excercise for me as a programmer. This
 is my first PyGTK program. The first code is based on the 'mapviewer.py'
-example that comes with osm-gps-map [4].
+example that comes with osm-gps-map [4]. Some code was taken from
+GPX Viewer [5].
 
 This program was created by Martijn Grendelman <m@rtijn.net>
 Mapviewer.py is copyright (C) Hadley Rich 2008 <hads@nice.net.nz>
+Code taken from GPX Viewer (C) 2009 Andrew Gee <andrew@andrewgee.org>
 
 
 [1] http://pygtk.org/
 [2] http://www.johnstowers.co.nz/blog/index.php/tag/osmgpsmap/
 [3] http://tilloy.net/dev/pyexiv2/index.html
 [4] https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py
-
+[5] http://blog.sarine.nl/gpx-viewer/
 
 Changelog:
 
+2012-09-24 - Some UI improvements, some borrowed from GPX Viewer
 2012-09-21 - Create a second column in the file list, displaying the EXIF
              DateTime. Add File menu items.
 2012-09-20 - Take 'mapviewer.py' and add some GTK widgets, like menubar and file
