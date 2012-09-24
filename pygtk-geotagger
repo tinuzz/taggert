@@ -148,10 +148,10 @@ class UI(gtk.Window):
             self.osm = DummyMapNoGpsPoint()
         else:
             self.osm = osmgpsmap.GpsMap()
-        self.osm.layer_add(
-                    osmgpsmap.GpsMapOsd(
-                        show_dpad=True,
-                        show_zoom=True))
+        #self.osm.layer_add(
+        #            osmgpsmap.GpsMapOsd(
+        #                show_dpad=True,
+        #                show_zoom=True))
         self.osm.layer_add(
                     DummyLayer())
 
@@ -168,8 +168,6 @@ class UI(gtk.Window):
         #connect to tooltip
         self.osm.props.has_tooltip = True
         self.osm.connect("query-tooltip", self.on_query_tooltip)
-
-        self.latlon_entry = gtk.Entry()
 
         zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
         zoom_in_button.connect('clicked', self.zoom_in_clicked)
@@ -234,6 +232,11 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         gobtn.connect("clicked", self.load_map_clicked)
         vb.pack_start(gobtn, False)
 
+        self.statusbar = gtk.Statusbar()
+        self.vbox0.pack_end(self.statusbar, False)
+
+        self.ui_zoomslider()
+
         self.show_tooltips = False
         cb = gtk.CheckButton("Show Location in Tooltips")
         cb.props.active = self.show_tooltips
@@ -246,7 +249,6 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         self.vbox.pack_end(cb, False)
 
         self.vbox.pack_end(ex, False)
-        self.vbox.pack_end(self.latlon_entry, False)
         self.vbox.pack_end(hbox, False)
 
         gobject.timeout_add(500, self.print_tiles)
@@ -282,6 +284,14 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         self.mb.append(helpm)
         helpm.set_submenu(helpmenu)
 
+    def ui_zoomslider (self):
+        self.zoomSlider = MapZoomSlider(self.osm)
+        self.zoomSlider.show_all()
+        a = gtk.Alignment(0.5,0.5,1.0,1.0)
+        a.set_padding(0,0,0,4)
+        a.add(self.zoomSlider)
+        a.show_all()
+        self.statusbar.pack_end(a, False, False, padding=4)
 
     def select_dir(self, widget):
         #md = gtk.MessageDialog(self,
@@ -306,7 +316,7 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
     def combobox_changed (self, combobox):
         model = combobox.get_model()
         index = combobox.get_active()
-        self.latlon_entry.set_text(str(index))
+        self.statusbar.push(0,'blabla %d' % index)
         # Use http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z for Google maps
         # Use http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg for Mapquest-OSM
         # Use http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg for Mapquest Open Aerial satellite images
@@ -361,11 +371,21 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
                 print "ERROR:", e
                 self.osm = osmgpsmap.GpsMap()
 
+            #self.osm.layer_add( osmgpsmap.GpsMapOsd(
+            #                show_dpad=True,
+            #                show_zoom=True))
+
             self.vbox.pack_start(self.osm, True)
             self.osm.connect('button_release_event', self.map_clicked)
             self.osm.connect('button_press_event', self.map_clicked2)
             self.osm.set_center_and_zoom(tmplat, tmplon, tmpzoom)
             self.osm.show()
+
+            # reconnect the zoomslider controls
+            self.zoomSlider.zo.connect("button-press-event", self.zoomSlider._on_zoom_out_pressed, self.osm)
+            self.zoomSlider.zoom.connect("value-changed", self.zoomSlider._on_zoom_slider_value_changed, self.osm)
+            self.zoomSlider.zi.connect("button-press-event", self.zoomSlider._on_zoom_in_pressed, self.osm)
+            self.osm.connect("notify::zoom", self.zoomSlider._on_map_zoom_changed)
 
     def print_tiles(self):
         if self.osm.props.tiles_queued != 0:
@@ -374,9 +394,11 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
 
     def zoom_in_clicked(self, button):
         self.osm.set_zoom(self.osm.props.zoom + 1)
+        self.statusbar.push(0, "Zoom factor: %d" % self.osm.props.zoom)
 
     def zoom_out_clicked(self, button):
         self.osm.set_zoom(self.osm.props.zoom - 1)
+        self.statusbar.push(0, "Zoom factor: %d" % self.osm.props.zoom)
 
     def home_clicked(self, button):
         self.osm.set_center_and_zoom(51.436035, 5.47840, 13)
@@ -409,21 +431,63 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
     def map_clicked(self, osm, event):
         lat,lon = self.osm.get_event_location(event).get_degrees()
         if event.button == 1:
-            self.latlon_entry.set_text(
-                'Map Centre: latitude %s longitude %s' % (
-                    self.osm.props.latitude,
-                    self.osm.props.longitude
-                )
-            )
+            self.statusbar.push(0, 'Map Centre: latitude %s longitude %s' % (self.osm.props.latitude, self.osm.props.longitude))
         elif event.button == 2:
             self.osm.gps_add(lat, lon, heading=osmgpsmap.INVALID);
         elif event.button == 3:
             self.osm.image_remove_all()
             pb = gtk.gdk.pixbuf_new_from_file_at_size ("crosshair.png", 24,24)
             self.osm.image_add(lat,lon,pb)
-            self.latlon_entry.set_text(
-                'Marker: latitude %s longitude %s' % (lat, lon)
-            )
+            self.statusbar.push(0, 'Marker: latitude %s longitude %s' % (lat, lon))
+
+class MapZoomSlider(gtk.HBox):
+    def __init__(self, _map):
+        gtk.HBox.__init__(self)
+        self.zo = gtk.EventBox()
+        self.zo.add(gtk.image_new_from_stock (gtk.STOCK_ZOOM_OUT, gtk.ICON_SIZE_MENU))
+        self.zo.connect("button-press-event", self._on_zoom_out_pressed, _map)
+        self.pack_start(self.zo, False, False)
+
+        self.zoom = gtk.Adjustment(
+                            value=_map.props.zoom,
+                            lower=_map.props.min_zoom,
+                            upper=_map.props.max_zoom,
+                            step_incr=1,
+                            page_incr=1,
+                            page_size=0)
+        self.zoom.connect("value-changed", self._on_zoom_slider_value_changed, _map)
+        hs = gtk.HScale(self.zoom)
+        hs.props.digits = 0
+        hs.props.draw_value = False
+        hs.set_size_request(100,-1)
+        hs.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
+        self.pack_start(hs, True, True)
+
+        self.zi = gtk.EventBox()
+        self.zi.add(gtk.image_new_from_stock (gtk.STOCK_ZOOM_IN, gtk.ICON_SIZE_MENU))
+        self.zi.connect("button-press-event", self._on_zoom_in_pressed, _map)
+        self.pack_start(self.zi, False, False)
+
+        _map.connect("notify::zoom", self._on_map_zoom_changed)
+
+    def _on_zoom_in_pressed(self, box, event, _map):
+        #_map.zoom_in()
+        _map.set_zoom(_map.props.zoom + 1)
+        u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
+
+    def _on_zoom_out_pressed(self, box, event, _map):
+        #_map.zoom_out()
+        _map.set_zoom(_map.props.zoom - 1)
+        u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
+
+    def _on_zoom_slider_value_changed(self, adj, _map):
+        zoom = adj.get_value()
+        if zoom != _map.props.zoom:
+            _map.set_zoom( int(zoom) )
+            u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
+
+    def _on_map_zoom_changed(self, _map, paramspec):
+        self.zoom.set_value(_map.props.zoom)
 
 if __name__ == "__main__":
     u = UI()
