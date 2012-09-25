@@ -76,22 +76,12 @@ class UI(gtk.Window):
         self.hbox0 = gtk.HBox(False, 0)
         self.vbox0.pack_start(self.hbox0)
 
-        #mydir='/home/martijn/Data/images/foto-video/iphion'
-        mydir='/home/martijn/Pictures/2012'
+        self.imagedir='/home/martijn/Pictures/2012'
 
-        store = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.imagestore = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.populate_store(self.imagestore, self.imagedir)
 
-        for fl in os.listdir(mydir):
-            if not fl[0] == '.':
-                fname = os.path.join(mydir, fl)
-                if not os.path.isdir(fname):
-                    if os.path.splitext(fname)[1].lower() == ".jpg":
-                        metadata = pyexiv2.ImageMetadata(fname)
-                        metadata.read()
-                        dt = metadata['Exif.Image.DateTime'].raw_value
-                        store.append([fl, dt])
-
-        treeview = gtk.TreeView(model=store)
+        treeview = gtk.TreeView(model=self.imagestore)
         treeview.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_HORIZONTAL)
 
         cell = gtk.CellRendererText()
@@ -250,7 +240,8 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         filem.set_submenu(filemenu)
 
         # Open file
-        openm = gtk.ImageMenuItem(gtk.STOCK_OPEN)
+        openm = gtk.ImageMenuItem(gtk.STOCK_DIRECTORY)
+        openm.set_label("Select image folder")
         openm.connect("activate", self.select_dir)
         filemenu.append(openm)
 
@@ -295,7 +286,24 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         chooser = gtk.FileChooserDialog(title='Select folder',action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
         chooser.run()
+        self.imagedir = chooser.get_filename()
+        self.populate_store (self.imagestore, self.imagedir)
         chooser.destroy()
+
+    def populate_store (self, store, imagedir):
+        store.clear()
+        for fl in os.listdir(imagedir):
+            if not fl[0] == '.':
+                fname = os.path.join(imagedir, fl)
+                if not os.path.isdir(fname):
+                    if os.path.splitext(fname)[1].lower() == ".jpg":
+                        metadata = pyexiv2.ImageMetadata(fname)
+                        metadata.read()
+                        try:
+                            dt = metadata['Exif.Image.DateTime'].raw_value
+                        except KeyError:
+                            dt = 'not set'
+                        store.append([fl, dt])
 
     def disable_cache_toggled(self, btn):
         if btn.props.active:
