@@ -68,6 +68,9 @@ class UI(gtk.Window):
         self.connect('destroy', lambda x: gtk.main_quit())
         self.set_title('Taggert')
 
+        self.target_lat = 0
+        self.target_lon = 0
+
         self.vbox0 = gtk.VBox(False,0)
         self.add(self.vbox0)
 
@@ -78,7 +81,7 @@ class UI(gtk.Window):
 
         self.imagedir='/home/martijn/Pictures/2012'
 
-        self.imagestore = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.imagestore = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
         self.populate_store(self.imagestore, self.imagedir)
 
         treeview = gtk.TreeView(model=self.imagestore)
@@ -100,6 +103,10 @@ class UI(gtk.Window):
         col1.set_min_width(140)
         col1.set_sort_column_id(1)
         treeview.append_column(col1)
+
+        #cell = gtk.CellRendererText()
+        #col2 = gtk.TreeViewColumn('Or', cell, text=2)
+        #treeview.append_column(col2)
 
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
@@ -174,12 +181,41 @@ class UI(gtk.Window):
         hbox = gtk.HBox(False, 0)
         self.vbox.pack_end(hbox, False)
 
-        pvframe = gtk.Frame('Image preview')
-        pvframe.set_size_request(162, 126)
+        self.pvframe = gtk.Frame('Image preview')
+        self.pvframe.set_size_request(314, 225)
+        self.pvframe.set_border_width(3)
 
         self.preview = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)
-        pvframe.add(self.preview)
-        hbox.pack_start(pvframe, False)
+        self.preview.set_padding(2,2)
+        self.pvframe.add(self.preview)
+        hbox.pack_start(self.pvframe, False)
+
+        acbframe = gtk.Frame('Actions')
+        acbframe.set_border_width(3)
+        hbox.pack_start(acbframe)
+
+        hbox2 = gtk.HBox()
+        acbframe.add(hbox2)
+
+        vbox2 = gtk.VBox()
+        vbox3 = gtk.VBox()
+        hbox2.pack_start(vbox2)
+        hbox2.pack_start(vbox3)
+
+        self.tagbutton = gtk.Button("Tag manually")
+        self.tagbutton.set_border_width(3)
+        self.tagbutton.set_sensitive(False)
+        vbox2.pack_start(self.tagbutton, False, False)
+
+        clearbutton = gtk.Button("Remove tags")
+        clearbutton.set_border_width(3)
+        vbox3.pack_start(clearbutton, False, False)
+
+        self.findbutton = gtk.Button("Go to target")
+        self.findbutton.set_border_width(3)
+        self.findbutton.set_sensitive(False)
+        self.findbutton.connect('clicked', self.findbutton_clicked)
+        vbox2.pack_start(self.findbutton, False, False)
 
         #gobject.timeout_add(500, self.print_tiles)
 
@@ -260,10 +296,16 @@ class UI(gtk.Window):
             p = pathlist[0]
             tree_iter = model.get_iter(p)
             value = model.get_value(tree_iter,0)
-            self.statusbar.push(0, 'Value: %s' % value)
+            orientation = model.get_value(tree_iter,2)
             filename = os.path.join(self.imagedir, value)
-            pb = gtk.gdk.pixbuf_new_from_file_at_size(filename, 150, 100)
+            pb = gtk.gdk.pixbuf_new_from_file_at_size(filename, 300, 200)
+            if orientation == '6':
+                pb = pb.rotate_simple(gtk.gdk.PIXBUF_ROTATE_CLOCKWISE)
+            elif orientation == '8':
+                pb = pb.rotate_simple(gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE)
             self.preview.set_from_pixbuf(pb)
+            w,h = self.pvframe.size_request()
+            self.statusbar.push(0, 'Value: %s, orientation: %s, width: %s, height: %s' % (value, orientation, w, h))
 
     def populate_store (self, store, imagedir):
         store.clear()
@@ -279,7 +321,12 @@ class UI(gtk.Window):
                                 dt = metadata['Exif.Image.DateTime'].raw_value
                             except KeyError:
                                 dt = ''
-                            store.append([fl, dt])
+                            try:
+                                rot =  metadata['Exif.Image.Orientation'].raw_value
+                            except KeyError:
+                                rot = 1
+
+                            store.append([fl, dt, rot])
 
     def disable_cache_toggled(self, btn):
         if btn.props.active:
@@ -356,6 +403,7 @@ class UI(gtk.Window):
             self.osm.connect('button_release_event', self.map_clicked)
             self.osm.connect('button_press_event', self.map_clicked2)
             self.osm.set_center_and_zoom(tmplat, tmplon, tmpzoom)
+            self.draw_target()
             self.osm.show()
 
             # reconnect the zoomslider controls
@@ -380,6 +428,9 @@ class UI(gtk.Window):
 
     def home_clicked(self, button):
         self.osm.set_center_and_zoom(51.436035, 5.47840, 13)
+
+    def findbutton_clicked(self, button):
+        self.osm.set_center_and_zoom(self.target_lat, self.target_lon, self.osm.props.zoom)
 
     def on_query_tooltip(self, widget, x, y, keyboard_tip, tooltip, data=None):
         if keyboard_tip:
@@ -414,9 +465,17 @@ class UI(gtk.Window):
             self.osm.gps_add(lat, lon, heading=osmgpsmap.INVALID);
         elif event.button == 3:
             self.osm.image_remove_all()
-            pb = gtk.gdk.pixbuf_new_from_file_at_size ("crosshair.png", 24,24)
-            self.osm.image_add(lat,lon,pb)
+            self.target_lat = lat
+            self.target_lon = lon
+            self.draw_target()
+            self.tagbutton.set_sensitive(True)
+            self.findbutton.set_sensitive(True)
             self.statusbar.push(0, 'Marker: latitude %s longitude %s' % (lat, lon))
+
+    def draw_target(self):
+        if self.target_lat and self.target_lon:
+            pb = gtk.gdk.pixbuf_new_from_file_at_size ("crosshair.png", 24,24)
+            self.osm.image_add(self.target_lat, self.target_lon, pb)
 
 class MapZoomSlider(gtk.HBox):
     def __init__(self, _map):
