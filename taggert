@@ -66,7 +66,7 @@ class UI(gtk.Window):
         self.set_default_size(1024, 768)
         self.set_position(gtk.WIN_POS_CENTER)
         self.connect('destroy', lambda x: gtk.main_quit())
-        self.set_title('PyGTK Geotagger')
+        self.set_title('Taggert')
 
         self.vbox0 = gtk.VBox(False,0)
         self.add(self.vbox0)
@@ -169,31 +169,14 @@ class UI(gtk.Window):
         self.osm.props.has_tooltip = True
         self.osm.connect("query-tooltip", self.on_query_tooltip)
 
-        zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
-        zoom_in_button.connect('clicked', self.zoom_in_clicked)
-        zoom_out_button = gtk.Button(stock=gtk.STOCK_ZOOM_OUT)
-        zoom_out_button.connect('clicked', self.zoom_out_clicked)
-        home_button = gtk.Button(stock=gtk.STOCK_HOME)
-        home_button.connect('clicked', self.home_clicked)
-        cache_button = gtk.Button('Cache')
-        cache_button.connect('clicked', self.cache_clicked)
-
         self.vbox.pack_start(self.osm)
         hbox = gtk.HBox(False, 0)
-        hbox.pack_start(zoom_in_button)
-        hbox.pack_start(zoom_out_button)
-        hbox.pack_start(home_button)
-        hbox.pack_start(cache_button)
 
         #add ability to test custom map URIs
         ex = gtk.Expander("<b>Map Repository URI</b>")
         ex.props.use_markup = True
         vb = gtk.VBox()
         self.repouri_entry = gtk.Entry()
-        # Use http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z for Google maps
-        # Use http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg for Mapquest-OSM
-        # Use http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg for Mapquest Open Aerial satellite images
-        # Use http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png for Opencyclemap
         self.repouri_entry.set_text(self.osm.props.repo_uri)
         self.image_format_entry = gtk.Entry()
         self.image_format_entry.set_text(self.osm.props.image_format)
@@ -233,6 +216,7 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         vb.pack_start(gobtn, False)
 
         self.statusbar = gtk.Statusbar()
+        self.statusbar.set_has_resize_grip(False)
         self.vbox0.pack_end(self.statusbar, False)
 
         self.ui_zoomslider()
@@ -278,6 +262,20 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         exit.connect("activate", gtk.main_quit)
         filemenu.append(exit)
 
+        # Bookmarks menu
+        bmmenu = gtk.Menu()
+        bmm = gtk.MenuItem("Bookmarks")
+        self.mb.append(bmm)
+        bmm.set_submenu(bmmenu)
+
+        # Home
+        homem = gtk.ImageMenuItem(gtk.STOCK_HOME)
+        homem.connect("activate", self.home_clicked)
+        bmmenu.append(homem)
+
+        sep = gtk.SeparatorMenuItem()
+        bmmenu.append(sep)
+
         # Help menu
         helpmenu = gtk.Menu()
         helpm = gtk.MenuItem("Help")
@@ -294,11 +292,6 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         self.statusbar.pack_end(a, False, False, padding=4)
 
     def select_dir(self, widget):
-        #md = gtk.MessageDialog(self,
-        #    gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_INFO,
-        #    gtk.BUTTONS_CLOSE, "Download completed")
-        #md.run()
-        #md.destroy()
         chooser = gtk.FileChooserDialog(title='Select folder',action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
         chooser.run()
