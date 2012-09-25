@@ -152,50 +152,9 @@ class UI(gtk.Window):
         hbox = gtk.HBox(False, 0)
 
         #add ability to test custom map URIs
-        ex = gtk.Expander("<b>Map Repository URI</b>")
-        ex.props.use_markup = True
-        vb = gtk.VBox()
-        self.repouri_entry = gtk.Entry()
-        self.repouri_entry.set_text(self.osm.props.repo_uri)
-        self.image_format_entry = gtk.Entry()
-        self.image_format_entry.set_text(self.osm.props.image_format)
 
         self.repouri = self.osm.props.repo_uri
         self.repoformat = self.osm.props.image_format
-
-        lbl = gtk.Label(
-"""
-Enter an repository URL to fetch map tiles from in the box below. Special metacharacters may be included in this url
-
-<i>Metacharacters:</i>
-\t#X\tMax X location
-\t#Y\tMax Y location
-\t#Z\tMap zoom (0 = min zoom, fully zoomed out)
-\t#S\tInverse zoom (max-zoom - #Z)
-\t#Q\tQuadtree encoded tile (qrts)
-\t#W\tQuadtree encoded tile (1234)
-\t#U\tEncoding not implemeted
-\t#R\tRandom integer, 0-4""")
-        lbl.props.xalign = 0
-        lbl.props.use_markup = True
-        lbl.props.wrap = True
-
-        ex.add(vb)
-        vb.pack_start(lbl, False)
-
-        hb = gtk.HBox()
-        hb.pack_start(gtk.Label("URI: "), False)
-        hb.pack_start(self.repouri_entry, True)
-        vb.pack_start(hb, False)
-
-        hb = gtk.HBox()
-        hb.pack_start(gtk.Label("Image Format: "), False)
-        hb.pack_start(self.image_format_entry, True)
-        vb.pack_start(hb, False)
-
-        gobtn = gtk.Button("Load Map URI")
-        gobtn.connect("clicked", self.load_map_clicked)
-        vb.pack_start(gobtn, False)
 
         self.statusbar = gtk.Statusbar()
         self.statusbar.set_has_resize_grip(False)
@@ -214,7 +173,6 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         cb.connect("toggled", self.disable_cache_toggled)
         self.vbox.pack_end(cb, False)
 
-        self.vbox.pack_end(ex, False)
         self.vbox.pack_end(hbox, False)
 
         gobject.timeout_add(500, self.print_tiles)
@@ -323,48 +281,30 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         # Use http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg for Mapquest Open Aerial satellite images
         # Use http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png for Opencyclemap
         if index == 0:
-            self.repouri_entry.set_text('http://tile.openstreetmap.org/#Z/#X/#Y.png')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://tile.openstreetmap.org/#Z/#X/#Y.png'
             self.repoformat = 'png'
         elif index == 1:
-            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z'
             self.repoformat = 'png'
         elif index == 2:
-            self.repouri_entry.set_text('http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg')
-            self.image_format_entry.set_text('jpg')
             self.repouri = 'http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg'
             self.repoformat = 'jpg'
         elif index == 3:
-            self.repouri_entry.set_text('http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg')
-            self.image_format_entry.set_text('jpg')
             self.repouri = 'http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg'
             self.repoformat = 'jpg'
         elif index == 4:
-            self.repouri_entry.set_text('http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png'
             self.repoformat = 'png'
         elif index == 5:
-            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X&y=#Y&z=#Z')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X&y=#Y&z=#Z'
             self.repoformat = 'png'
         elif index == 6:
-            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X&y=#Y&z=#Z')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X&y=#Y&z=#Z'
             self.repoformat = 'png'
         elif index == 7:
-            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X&y=#Y&z=#Z')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X&y=#Y&z=#Z'
             self.repoformat = 'png'
         elif index == 8:
-            self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z')
-            self.image_format_entry.set_text('png')
             self.repouri = 'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z'
             self.repoformat = 'png'
 
@@ -375,9 +315,7 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         tmpzoom = self.osm.props.zoom
         tmplat = self.osm.props.latitude
         tmplon = self.osm.props.longitude
-        #uri = self.repouri_entry.get_text()
         uri = self.repouri
-        #format = self.image_format_entry.get_text()
         format = self.repoformat
         if uri and format:
             if self.osm:
@@ -418,7 +356,8 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         self.statusbar.push(0, "Zoom factor: %d" % self.osm.props.zoom)
 
     def zoom_out_clicked(self, button):
-        self.osm.set_zoom(self.osm.props.zoom - 1)
+        if self.osm.props.zoom > 1:
+            self.osm.set_zoom(self.osm.props.zoom - 1)
         self.statusbar.push(0, "Zoom factor: %d" % self.osm.props.zoom)
 
     def home_clicked(self, button):
@@ -498,7 +437,8 @@ class MapZoomSlider(gtk.HBox):
 
     def _on_zoom_out_pressed(self, box, event, _map):
         #_map.zoom_out()
-        _map.set_zoom(_map.props.zoom - 1)
+        if _map.props.zoom > 1:
+            _map.set_zoom(_map.props.zoom - 1)
         u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
 
     def _on_zoom_slider_value_changed(self, adj, _map):
