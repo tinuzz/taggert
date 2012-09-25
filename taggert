@@ -99,7 +99,7 @@ class UI(gtk.Window):
         treeview.append_column(col1)
 
         sw = gtk.ScrolledWindow()
-        sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_ALWAYS)
+        sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         self.hbox0.pack_start(sw, False)
         #sw.show()
         sw.add(treeview)
@@ -159,6 +159,9 @@ class UI(gtk.Window):
         self.repouri_entry.set_text(self.osm.props.repo_uri)
         self.image_format_entry = gtk.Entry()
         self.image_format_entry.set_text(self.osm.props.image_format)
+
+        self.repouri = self.osm.props.repo_uri
+        self.repoformat = self.osm.props.image_format
 
         lbl = gtk.Label(
 """
@@ -322,30 +325,48 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         if index == 0:
             self.repouri_entry.set_text('http://tile.openstreetmap.org/#Z/#X/#Y.png')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://tile.openstreetmap.org/#Z/#X/#Y.png'
+            self.repoformat = 'png'
         elif index == 1:
             self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
         elif index == 2:
             self.repouri_entry.set_text('http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg')
             self.image_format_entry.set_text('jpg')
+            self.repouri = 'http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg'
+            self.repoformat = 'jpg'
         elif index == 3:
             self.repouri_entry.set_text('http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg')
             self.image_format_entry.set_text('jpg')
+            self.repouri = 'http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg'
+            self.repoformat = 'jpg'
         elif index == 4:
             self.repouri_entry.set_text('http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png'
+            self.repoformat = 'png'
         elif index == 5:
             self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X&y=#Y&z=#Z')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
         elif index == 6:
             self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X&y=#Y&z=#Z')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
         elif index == 7:
             self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X&y=#Y&z=#Z')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
         elif index == 8:
             self.repouri_entry.set_text('http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z')
             self.image_format_entry.set_text('png')
+            self.repouri = 'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
 
         self.load_map_clicked (0)
         self.vbox.reorder_child(self.combobox,1)
@@ -354,8 +375,10 @@ Enter an repository URL to fetch map tiles from in the box below. Special metach
         tmpzoom = self.osm.props.zoom
         tmplat = self.osm.props.latitude
         tmplon = self.osm.props.longitude
-        uri = self.repouri_entry.get_text()
-        format = self.image_format_entry.get_text()
+        #uri = self.repouri_entry.get_text()
+        uri = self.repouri
+        #format = self.image_format_entry.get_text()
+        format = self.repoformat
         if uri and format:
             if self.osm:
                 #remove old map
