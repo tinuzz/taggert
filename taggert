@@ -82,7 +82,10 @@ class UI(gtk.Window):
         self.populate_store(self.imagestore, self.imagedir)
 
         treeview = gtk.TreeView(model=self.imagestore)
+        self.treeselect = treeview.get_selection()
+        self.treeselect.set_mode(gtk.SELECTION_MULTIPLE)
         treeview.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_HORIZONTAL)
+        treeview.connect('cursor-changed', self.filelist_file_selected)
 
         cell = gtk.CellRendererText()
         #cell.set_property('cell-background', 'cyan')
@@ -127,10 +130,6 @@ class UI(gtk.Window):
             self.osm = DummyMapNoGpsPoint()
         else:
             self.osm = osmgpsmap.GpsMap()
-        #self.osm.layer_add(
-        #            osmgpsmap.GpsMapOsd(
-        #                show_dpad=True,
-        #                show_zoom=True))
         self.osm.layer_add(
                     DummyLayer())
 
@@ -149,7 +148,6 @@ class UI(gtk.Window):
         self.osm.connect("query-tooltip", self.on_query_tooltip)
 
         self.vbox.pack_start(self.osm)
-        hbox = gtk.HBox(False, 0)
 
         #add ability to test custom map URIs
 
@@ -162,20 +160,28 @@ class UI(gtk.Window):
 
         self.ui_zoomslider()
 
-        self.show_tooltips = False
-        cb = gtk.CheckButton("Show Location in Tooltips")
-        cb.props.active = self.show_tooltips
-        cb.connect("toggled", self.on_show_tooltips_toggled)
-        self.vbox.pack_end(cb, False)
+        self.show_tooltips = True
+        #cb = gtk.CheckButton("Show Location in Tooltips")
+        #cb.props.active = self.show_tooltips
+        #cb.connect("toggled", self.on_show_tooltips_toggled)
+        #self.vbox.pack_end(cb, False)
 
-        cb = gtk.CheckButton("Disable Cache")
-        cb.props.active = False
-        cb.connect("toggled", self.disable_cache_toggled)
-        self.vbox.pack_end(cb, False)
+        #cb = gtk.CheckButton("Disable Cache")
+        #cb.props.active = False
+        #cb.connect("toggled", self.disable_cache_toggled)
+        #self.vbox.pack_end(cb, False)
 
+        hbox = gtk.HBox(False, 0)
         self.vbox.pack_end(hbox, False)
 
-        gobject.timeout_add(500, self.print_tiles)
+        pvframe = gtk.Frame('Image preview')
+        pvframe.set_size_request(170, 130)
+
+        self.preview = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)
+        pvframe.add(self.preview)
+        hbox.pack_start(pvframe, False)
+
+        #gobject.timeout_add(500, self.print_tiles)
 
     def ui_menu (self):
 
@@ -246,6 +252,18 @@ class UI(gtk.Window):
         self.populate_store (self.imagestore, self.imagedir)
         self.statusbar.push(0, chooser.get_current_folder_uri())
         chooser.destroy()
+
+    def filelist_file_selected (self, treeview):
+        path, column = treeview.get_cursor()
+        model,pathlist = self.treeselect.get_selected_rows()
+        if pathlist:
+            p = pathlist[0]
+            tree_iter = model.get_iter(p)
+            value = model.get_value(tree_iter,0)
+            self.statusbar.push(0, 'Value: %s' % value)
+            filename = os.path.join(self.imagedir, value)
+            pb = gtk.gdk.pixbuf_new_from_file_at_size(filename, 150, 100)
+            self.preview.set_from_pixbuf(pb)
 
     def populate_store (self, store, imagedir):
         store.clear()
@@ -347,8 +365,8 @@ class UI(gtk.Window):
             self.osm.connect("notify::zoom", self.zoomSlider._on_map_zoom_changed)
 
     def print_tiles(self):
-        if self.osm.props.tiles_queued != 0:
-            print self.osm.props.tiles_queued, 'tiles queued'
+        #if self.osm.props.tiles_queued != 0:
+        #    print self.osm.props.tiles_queued, 'tiles queued'
         return True
 
     def zoom_in_clicked(self, button):
