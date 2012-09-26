@@ -81,7 +81,7 @@ class UI(gtk.Window):
 
         self.imagedir='/home/martijn/Pictures/2012'
 
-        self.imagestore = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.imagestore = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
         self.populate_store(self.imagestore, self.imagedir)
 
         treeview = gtk.TreeView(model=self.imagestore)
@@ -94,6 +94,7 @@ class UI(gtk.Window):
         #cell.set_property('cell-background', 'cyan')
         col0 = gtk.TreeViewColumn('Filename', cell, text=0)
         col0.set_min_width(180)
+        col0.set_max_width(190)
         col0.set_sort_column_id(0)
         treeview.append_column(col0)
 
@@ -107,6 +108,14 @@ class UI(gtk.Window):
         #cell = gtk.CellRendererText()
         #col2 = gtk.TreeViewColumn('Or', cell, text=2)
         #treeview.append_column(col2)
+
+        cell = gtk.CellRendererText()
+        col3 = gtk.TreeViewColumn('Lat', cell, text=3)
+        treeview.append_column(col3)
+
+        cell = gtk.CellRendererText()
+        col4 = gtk.TreeViewColumn('Lon', cell, text=4)
+        treeview.append_column(col4)
 
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
@@ -129,6 +138,7 @@ class UI(gtk.Window):
         self.combobox.append_text("Google Aerial with streets")
         self.combobox.append_text("Google Terrain")
         self.combobox.append_text("Google Terrain with streets")
+        self.combobox.append_text("Maps for Free relief")
         self.combobox.set_active(0)
         self.combobox.connect('changed', self.combobox_changed)
 
@@ -211,7 +221,7 @@ class UI(gtk.Window):
         clearbutton.set_border_width(3)
         vbox3.pack_start(clearbutton, False, False)
 
-        self.findbutton = gtk.Button("Go to target")
+        self.findbutton = gtk.Button("Go to marker")
         self.findbutton.set_border_width(3)
         self.findbutton.set_sensitive(False)
         self.findbutton.connect('clicked', self.findbutton_clicked)
@@ -325,8 +335,16 @@ class UI(gtk.Window):
                                 rot =  metadata['Exif.Image.Orientation'].raw_value
                             except KeyError:
                                 rot = 1
+                            try:
+                                imglat = metadata['Exif.GPSInfo.GPSLatitude'].human_value
+                            except KeyError:
+                                imglat = ''
+                            try:
+                                imglon = metadata['Exif.GPSInfo.GPSLongitude'].human_value
+                            except KeyError:
+                                imglon = ''
 
-                            store.append([fl, dt, rot])
+                            store.append([fl, dt, rot, imglat, imglon])
 
     def disable_cache_toggled(self, btn):
         if btn.props.active:
@@ -345,6 +363,7 @@ class UI(gtk.Window):
         # Use http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg for Mapquest-OSM
         # Use http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg for Mapquest Open Aerial satellite images
         # Use http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png for Opencyclemap
+        # Use http://maps-for-free.com/layer/relief/z#Z/row#Y/#Z_#X-#Y.jpg for MFF Relief
         if index == 0:
             self.repouri = 'http://tile.openstreetmap.org/#Z/#X/#Y.png'
             self.repoformat = 'png'
@@ -372,6 +391,9 @@ class UI(gtk.Window):
         elif index == 8:
             self.repouri = 'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z'
             self.repoformat = 'png'
+        elif index == 9:
+            self.repouri = 'http://maps-for-free.com/layer/relief/z#Z/row#Y/#Z_#X-#Y.jpg'
+            self.repoformat = 'jpg'
 
         self.load_map_clicked (0)
         self.vbox.reorder_child(self.combobox,1)
