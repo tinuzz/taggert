@@ -25,10 +25,16 @@ class App(object):
     def main(self):
         self.ui = UI()
         self.ui.treeview0.set_model(self.imagestore)
+        self.ui.connect('destroy', self.quit)
+        self.ui.menuitem_quit.connect("activate", self.quit)
         self.ui.show_all()
         if os.name == "nt": gtk.gdk.threads_enter()
         gtk.main()
         if os.name == "nt": gtk.gdk.threads_leave()
+
+    def quit(self, _widget):
+        print "bla"
+        gtk.main_quit()
 
     def populate_store (self, store, imagedir):
         store.clear()

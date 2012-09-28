@@ -8,7 +8,6 @@ class UI(gtk.Window):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
         self.set_default_size(1024, 768)
         self.set_position(gtk.WIN_POS_CENTER)
-        self.connect('destroy', lambda x: gtk.main_quit())
         self.set_title('Taggert')
 
         # main VBox, containing menubar, main window and statusbar
@@ -83,9 +82,8 @@ class UI(gtk.Window):
         sep = gtk.SeparatorMenuItem()
         self.filemenu.append(sep)
 
-        menuitem = gtk.ImageMenuItem(gtk.STOCK_QUIT)
-        menuitem.connect("activate", gtk.main_quit)
-        self.filemenu.append(menuitem)
+        self.menuitem_quit = gtk.ImageMenuItem(gtk.STOCK_QUIT)
+        self.filemenu.append(self.menuitem_quit)
 
     def bookmarksmenu(self):
         self.bookmarksmenu = gtk.Menu()
@@ -108,12 +106,16 @@ class UI(gtk.Window):
         sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
         sw.add(self.treeview0)
 
-        label0 = gtk.Label("Images")
+        label0 = gtk.Label("Images         ")
 
         self.notebook = gtk.Notebook()
         self.notebook.set_tab_pos(gtk.POS_TOP)
         #self.notebook.set_size_request(360, -1)
         self.notebook.append_page(sw, label0)
+
+        label1 = gtk.Label("Tracks         ")
+        frame = gtk.Frame()
+        self.notebook.append_page(frame, label1)
 
     def treeview0(self):
         self.treeview0 = gtk.TreeView()
