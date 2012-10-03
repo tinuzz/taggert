@@ -371,6 +371,7 @@ class App(object):
         #self.marker_location(self.clicked_lat, self.clicked_lon)
         point.set_color(Clutter.Color.new(255, 0, 0, 255))
         point.set_size(self.marker_size)
+        point.set_draggable(True)
         self.markerlayer.add_marker(point)
 
     def center_map_here(self, _widget):
