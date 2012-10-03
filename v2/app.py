@@ -24,6 +24,10 @@ class App(object):
         self.imagedir   = '/home/martijn/Pictures/2012'
         self.filelist_locked = False
         self.home_location = (51.44800, 5.47300, 17)  # lat, lon, zoom
+        self.clicked_lat = 0.0
+        self.clicked_lon = 0.0
+        self.marker_location = (0.0, 0.0)
+        self.marker_size = 18
 
     def main(self):
         self.setup_gui()
@@ -57,10 +61,12 @@ class App(object):
             "imagemenuitem1_activate": self.go_home,
             "combobox1_changed": self.combobox_changed,
             "checkmenuitem1_toggled": self.populate_store1,
-            "treeview-selection2_changed": self.treeselect_changed
+            "treeview-selection2_changed": self.treeselect_changed,
+            "menuitem6_activate": self.map_add_marker,
+            "menuitem7_activate": self.center_map_here,
+            "button2_clicked": self.go_to_marker
         }
         self.builder.connect_signals(handlers)
-
 
     def setup_map(self):
         widget = GtkChamplain.Embed()
@@ -72,13 +78,20 @@ class App(object):
         self.osm = widget.get_view()
         self.go_home()
 
+        # A marker layer
+        self.markerlayer = Champlain.MarkerLayer()
+        self.osm.add_layer(self.markerlayer)
+
+        # A map scale
         scale = Champlain.Scale()
         scale.connect_view(self.osm)
         self.osm.bin_layout_add(scale, START, END)
 
+        # The label showing the coordinates at the top
         self.clabel = Clutter.Text()
         self.clabel.set_color(Clutter.Color.new(255, 255, 0, 255))
 
+        # The box containing the label
         cbox = Clutter.Box()
         cbox.set_layout_manager(Clutter.BinLayout())
         cbox.set_color(Clutter.Color.new(0, 0, 0, 96))
@@ -86,9 +99,10 @@ class App(object):
         cbox.get_layout_manager().add(self.clabel, CENTER, CENTER)
         self.osm.connect('notify::width', lambda *ignore: cbox.set_size(self.osm.get_width(), 30))
 
-        widget.connect("realize", self.map_animation_completed)
-        widget.connect("button-release-event", self.map_animation_completed)
-        self.osm.connect("layer-relocated", self.map_animation_completed)
+        widget.connect("realize", self.handle_map_event)
+        widget.connect("button-release-event", self.handle_map_event)
+        self.osm.connect("layer-relocated", self.handle_map_event)
+        widget.connect("button-press-event", self.handle_map_mouseclick)
 
     def init_combobox1(self):
         combobox = self.builder.get_object("combobox1")
@@ -321,12 +335,20 @@ class App(object):
             self.imagedir = chooser.get_filename()
             self.populate_store1 ()
 
-    def go_home(self, button=0):
+    def go_home(self, _widget=None):
         lat, lon, zoom = self.home_location
         self.osm.center_on(lat, lon)
         self.osm.set_zoom_level(zoom)
 
-    def map_animation_completed(self, _widget, _ignore=None):
+    def go_to_marker(self, _widget=None):
+        try:
+            m = self.markerlayer.get_markers()[0]
+            lat, lon = (m.get_latitude(), m.get_longitude())
+            self.osm.center_on(lat, lon)
+        except IndexError:
+            pass
+
+    def handle_map_event(self, _widget, _ignore=None):
         lat = self.osm.get_center_latitude()
         lon = self.osm.get_center_longitude()
         text = "%s %.5f, %s %.5f" % (
@@ -334,3 +356,22 @@ class App(object):
                 'E' if lon >= 0 else 'W', abs(lon)
             )
         self.clabel.set_text (text)
+
+    def handle_map_mouseclick(self, _widget, event):
+        if event.button == 3:
+            menu = self.builder.get_object("menu6")
+            menu.popup(None, None, None, None, event.button, event.time)
+            self.clicked_lat, self.clicked_lon = self.osm.y_to_latitude(event.y), self.osm.x_to_longitude(event.x)
+            #self.statusbar.push(0, "LAT: %s, LON: %s" % (lat,lon))
+
+    def map_add_marker(self, _widget):
+        self.markerlayer.remove_all()
+        point = Champlain.Point()
+        point.set_location(self.clicked_lat, self.clicked_lon)
+        #self.marker_location(self.clicked_lat, self.clicked_lon)
+        point.set_color(Clutter.Color.new(255, 0, 0, 255))
+        point.set_size(self.marker_size)
+        self.markerlayer.add_marker(point)
+
+    def center_map_here(self, _widget):
+        self.osm.center_on(self.clicked_lat, self.clicked_lon)

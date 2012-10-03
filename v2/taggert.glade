@@ -115,6 +115,30 @@
       <column type="gchararray"/>
     </columns>
   </object>
+  <object class="GtkMenu" id="menu6">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menuitem6">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Set marker here</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="menuitem6_activate" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem7">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Center map here</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="menuitem7_activate" swapped="no"/>
+      </object>
+    </child>
+  </object>
   <object class="GtkWindow" id="window1">
     <property name="width_request">780</property>
     <property name="height_request">600</property>
@@ -523,6 +547,7 @@
                                     <property name="halign">start</property>
                                     <property name="valign">center</property>
                                     <property name="use_action_appearance">False</property>
+                                    <signal name="clicked" handler="button2_clicked" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
