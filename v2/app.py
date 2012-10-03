@@ -2,8 +2,7 @@
 import os
 import pyexiv2
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
-#from gi.repository import GObject
-#from gi.repository import Clutter
+from gi.repository import Clutter
 from gi.repository import Gtk, GtkChamplain
 from gi.repository import Champlain
 from gi.repository import GdkPixbuf
@@ -13,12 +12,18 @@ from pprint import pprint
 #GObject.threads_init()
 GtkClutter.init([])
 
+START  = Clutter.BinAlignment.START
+CENTER = Clutter.BinAlignment.CENTER
+END    = Clutter.BinAlignment.END
+
 class App(object):
 
     def __init__(self):
         self.marker_lat = 0
         self.marker_lon = 0
         self.imagedir   = '/home/martijn/Pictures/2012'
+        self.filelist_locked = False
+        self.home_location = (51.44800, 5.47300, 17)  # lat, lon, zoom
 
     def main(self):
         self.setup_gui()
@@ -27,7 +32,7 @@ class App(object):
         self.init_treeview1()
         self.setup_map()
         self.setup_gui_signals()
-        self.populate_store1(self.imagedir)
+        self.populate_store1()
         self.window.set_title('Taggert')
         self.window.show_all()
         Gtk.main()
@@ -38,21 +43,24 @@ class App(object):
         self.window = self.builder.get_object("window1")
         self.window.set_default_size(1200, 768)
         self.window.set_position(Gtk.WindowPosition.CENTER)
-        chooser = self.builder.get_object ("filechooserdialog1")
-        chooser.add_button("OK", Gtk.ResponseType.OK)
+        #chooser = self.builder.get_object ("filechooserdialog1")
+        #chooser.add_button("OK", Gtk.ResponseType.OK)
         #chooser.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        self.statusbar = self.builder.get_object("statusbar1")
 
     def setup_gui_signals(self):
-        # destroy
-        self.window.connect("delete-event", self.quit)
-        # File -> Quit
-        quit = self.builder.get_object("imagemenuitem5")
-        quit.connect("activate", self.quit, False)
 
         handlers = {
-            "imagemenuitem2_activate": self.select_dir
+            "window1_delete_event": self.quit,
+            "imagemenuitem5_activate": self.quit, # File -> Quit
+            "imagemenuitem2_activate": self.select_dir,
+            "imagemenuitem1_activate": self.go_home,
+            "combobox1_changed": self.combobox_changed,
+            "checkmenuitem1_toggled": self.populate_store1,
+            "treeview-selection2_changed": self.treeselect_changed
         }
         self.builder.connect_signals(handlers)
+
 
     def setup_map(self):
         widget = GtkChamplain.Embed()
@@ -62,8 +70,25 @@ class App(object):
         box.pack_start(widget, True, True, 0)
 
         self.osm = widget.get_view()
-        self.osm.center_on(51.436035, 5.47840)
-        self.osm.set_zoom_level(10)
+        self.go_home()
+
+        scale = Champlain.Scale()
+        scale.connect_view(self.osm)
+        self.osm.bin_layout_add(scale, START, END)
+
+        self.clabel = Clutter.Text()
+        self.clabel.set_color(Clutter.Color.new(255, 255, 0, 255))
+
+        cbox = Clutter.Box()
+        cbox.set_layout_manager(Clutter.BinLayout())
+        cbox.set_color(Clutter.Color.new(0, 0, 0, 96))
+        self.osm.bin_layout_add(cbox, START, START)
+        cbox.get_layout_manager().add(self.clabel, CENTER, CENTER)
+        self.osm.connect('notify::width', lambda *ignore: cbox.set_size(self.osm.get_width(), 30))
+
+        widget.connect("realize", self.map_animation_completed)
+        widget.connect("button-release-event", self.map_animation_completed)
+        self.osm.connect("layer-relocated", self.map_animation_completed)
 
     def init_combobox1(self):
         combobox = self.builder.get_object("combobox1")
@@ -71,7 +96,6 @@ class App(object):
         combobox.pack_start(renderer, True)
         combobox.add_attribute(renderer, "text", 1)
         combobox.set_active(0)
-        combobox.connect('changed', self.combobox_changed)
 
     def init_treeview1(self):
         renderer = Gtk.CellRendererText()
@@ -91,29 +115,29 @@ class App(object):
         tree.append_column(col2)
         tree.append_column(col3)
 
-        #tree.connect("size-allocate", self.treeview_size_allocate)
-        treeselect = tree.get_selection()
-        self.sig1 = treeselect.connect('changed', self.treeselect_changed)
+        #treeselect = tree.get_selection()
+        #self.sig1 = treeselect.connect('changed', self.treeselect_changed)
 
-    def quit(self, _window, _event):
-        print "bla"
+    def quit(self, _window, _event=None):
+        print "Exit."
         Gtk.main_quit()
 
-    def populate_store1(self, imagedir):
+    def populate_store1(self, widget=None):
 
-        # Disconnecting the 'changed' signal on the treeview selection is necessary
-        # because otheriwse it will trigger for every image during rebuilding the liststore
-        tree = self.builder.get_object("treeview1")
-        treeselect = tree.get_selection()
-        treeselect.disconnect(self.sig1)
+        menuitem = self.builder.get_object("checkmenuitem1")
+        checked = menuitem.get_active()
 
-        print "Going to scan %s" % imagedir
-        store = self.builder.get_object("liststore1")
-        store.clear()
-        if imagedir:
-            for fl in os.listdir(imagedir):
-                if not fl[0] == '.':
-                    fname = os.path.join(imagedir, fl)
+        self.filelist_locked = True
+        shown = 0
+        notshown = 0
+
+        try:
+            #print "Going to scan %s" % self.imagedir
+            store = self.builder.get_object("liststore1")
+            store.clear()
+            if self.imagedir:
+                for fl in os.listdir(self.imagedir):
+                    fname = os.path.join(self.imagedir, fl)
                     if not os.path.isdir(fname):
                         if os.path.splitext(fname)[1].lower() == ".jpg":
                             metadata = pyexiv2.ImageMetadata(fname)
@@ -134,9 +158,18 @@ class App(object):
                                 imglon = metadata['Exif.GPSInfo.GPSLongitude'].human_value
                             except KeyError:
                                 imglon = ''
-                            store.append([fl, dt, rot, imglat, imglon])
+                            if not checked or imglat == '' or imglon == '':
+                                store.append([fl, dt, rot, imglat, imglon])
+                                shown += 1
+                            else:
+                                notshown += 1
+        finally:
+            self.filelist_locked = False
 
-        self.sig1 = treeselect.connect('changed', self.treeselect_changed)
+        msg = "%d images" % shown
+        if notshown > 0:
+            msg = "%s, %d already tagged images not shown" % (msg, notshown)
+        self.statusbar.push(0, msg)
 
     def init_map_sources(self):
         self.map_sources = {}
@@ -230,6 +263,9 @@ class App(object):
 #        paned.position = allocation.width
 
     def treeselect_changed (self, treeselect):
+        #pprint(self.osm.get_center_latitude())
+        if self.filelist_locked:
+            return
         if treeselect:
             model,pathlist = treeselect.get_selected_rows()
             if pathlist:
@@ -262,7 +298,7 @@ class App(object):
                     pb = pb.scale_simple(nw, nh, 2)
 
                 preview = self.builder.get_object("image1")
-                preview.set_from_pixbuf(pb)
+                #preview.set_from_pixbuf(pb)
                 preview.set_from_pixbuf(pb)
 
     def select_dir(self, widget):
@@ -278,8 +314,23 @@ class App(object):
         if self.imagedir[0] == '/':
             chooser.set_current_folder_uri('file://%s' % self.imagedir)
 
-        chooser.run()
-        self.imagedir = chooser.get_filename()
+        response = chooser.run()
         chooser.hide()
-        print "Dir chosen: %s" % self.imagedir
-        self.populate_store1 (self.imagedir)
+        if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
+            #print "Dir chosen: %s" % self.imagedir
+            self.imagedir = chooser.get_filename()
+            self.populate_store1 ()
+
+    def go_home(self, button=0):
+        lat, lon, zoom = self.home_location
+        self.osm.center_on(lat, lon)
+        self.osm.set_zoom_level(zoom)
+
+    def map_animation_completed(self, _widget, _ignore=None):
+        lat = self.osm.get_center_latitude()
+        lon = self.osm.get_center_longitude()
+        text = "%s %.5f, %s %.5f" % (
+                'N' if lat >= 0 else 'S', abs(lat),
+                'E' if lon >= 0 else 'W', abs(lon)
+            )
+        self.clabel.set_text (text)
