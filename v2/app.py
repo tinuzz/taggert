@@ -103,7 +103,8 @@ class App(object):
             "eventbox2_button_press_event": self.map_zoom_in,
             "adjustment1_value_changed": self.adjust_zoom,
             "button5_clicked": self.add_bookmark_dialog,
-            "menuitem8_activate": self.delete_bookmark
+            "menuitem8_activate": self.delete_bookmark,
+            "button1_clicked": self.tag_selected_from_marker
         }
         self.builder.connect_signals(handlers)
 
@@ -335,6 +336,7 @@ class App(object):
         if treeselect:
             model,pathlist = treeselect.get_selected_rows()
             if pathlist:
+                # Get the first selected picture
                 p = pathlist[0]
                 tree_iter = model.get_iter(p)
                 value = model.get_value(tree_iter,0)
@@ -541,3 +543,17 @@ class App(object):
         self.last_clicked_bookmark.destroy()
         del self.bookmarks[bm_id]
         self.save_bookmarks()
+
+    def tag_selected_from_marker(self, widget):
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if pathlist:
+            try:
+                m = self.markerlayer.get_markers()[0]
+                lat, lon = (m.get_latitude(), m.get_longitude())
+                for p in pathlist:
+                    tree_iter = model.get_iter(p)
+                    model[tree_iter][3] = str(lat)
+                    model[tree_iter][4] = str(lon)
+            except IndexError:
+                pass
