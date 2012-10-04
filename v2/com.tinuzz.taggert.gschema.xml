@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema path="/com/tinuzz/taggert/" id="com.tinuzz.taggert">
+    <key type="(ii)" name="window-size">
+      <default>(800, 600)</default>
+      <summary>The current size of the main window.</summary>
+    </key>
+    <key type="s" name="map-source-id">
+      <default>"osm-mapnik"</default>
+      <summary>The id of the map to display to the user.</summary>
+    </key>
+    <key type="(iiii)" name="marker-color">
+      <default>(255, 0, 0, 255)</default>
+      <summary>Use this color for the marker on the map.</summary>
+    </key>
+    <key type="i" name="marker-size">
+      <default>18</default>
+      <summary>Use this size for the marker on the map. </summary>
+    </key>
+    <key type="(ddi)" name="home-location">
+      <default>(0.0, 0.0, 0)</default>
+      <summary>Use these coordinates and zoom level as home location.</summary>
+    </key>
+    <key type="b" name="show-map-coords">
+      <default>true</default>
+      <summary>Determines whether or not to show the latitude and longitude atop the map.</summary>
+    </key>
+    <key type="b" name="show-untagged-only">
+      <default>false</default>
+      <summary>Wether to only show untagged images in the file list</summary>
+    </key>
+    <key type="a{ss}" name="bookmarks-names">
+      <default>{"bookmark1": "Eiffel Tower", "bookmark2": "Taj Mahal"}</default>
+      <summary>The names of user's bookmarks</summary>
+    </key>
+    <key type="a{sd}" name="bookmarks-latitudes">
+      <default>{"bookmark1": 48.857995, "bookmark2": 27.17267}</default>
+      <summary>The latitudes of user's bookmarks</summary>
+    </key>
+    <key type="a{sd}" name="bookmarks-longitudes">
+      <default>{"bookmark1": 2.294759, "bookmark2": 78.042895}</default>
+      <summary>The longitudes of user's bookmarks</summary>
+    </key>
+  </schema>
+</schemalist>

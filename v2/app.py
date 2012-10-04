@@ -7,6 +7,7 @@ from gi.repository import Gtk, GtkChamplain
 from gi.repository import Champlain
 from gi.repository import GdkPixbuf
 #from gi.repository import GObject
+from gi.repository import Gio, GLib
 from pprint import pprint
 
 #GObject.threads_init()
@@ -23,14 +24,17 @@ class App(object):
         self.marker_lon = 0
         self.imagedir   = '/home/martijn/Pictures/2012'
         self.filelist_locked = False
-        self.home_location = (51.44800, 5.47300, 17)  # lat, lon, zoom
+        self.home_location = (51.44823, 5.47262, 17)  # lat, lon, zoom
         self.clicked_lat = 0.0
         self.clicked_lon = 0.0
         self.marker_location = (0.0, 0.0)
         self.marker_size = 18
         self.map_id = 'osm-mapnik'
+        self.bookmarks = {}
+        self.last_clicked_bookmark = None
 
     def main(self):
+        self.read_settings()
         self.setup_gui()
         self.init_map_sources()
         self.init_combobox1()
@@ -39,9 +43,35 @@ class App(object):
         self.setup_gui_signals()
         self.populate_store1()
         self.update_adjustment1()
+        self.reload_bookmarks()
         self.window.set_title('Taggert')
         self.window.show_all()
         Gtk.main()
+
+    def read_settings(self):
+        self.settings = Gio.Settings.new('com.tinuzz.taggert')
+
+        v = self.settings.get_value('bookmarks-names')
+        for i in range(v.n_children()):
+            val = v.get_child_value(i)
+            key = val.get_child_value(0).get_string()
+            value = val.get_child_value(1).get_string()
+            self.bookmarks[key] = {}
+            self.bookmarks[key]['name'] = value
+
+        v = self.settings.get_value('bookmarks-latitudes')
+        for i in range(v.n_children()):
+            val = v.get_child_value(i)
+            key = val.get_child_value(0).get_string()
+            value = val.get_child_value(1).get_double()
+            self.bookmarks[key]['latitude'] = value
+
+        v = self.settings.get_value('bookmarks-longitudes')
+        for i in range(v.n_children()):
+            val = v.get_child_value(i)
+            key = val.get_child_value(0).get_string()
+            value = val.get_child_value(1).get_double()
+            self.bookmarks[key]['longitude'] = value
 
     def setup_gui(self):
         self.builder = Gtk.Builder()
@@ -71,7 +101,9 @@ class App(object):
             "image5_button_press_event": self.map_zoom_in,
             "eventbox1_button_press_event": self.map_zoom_out,
             "eventbox2_button_press_event": self.map_zoom_in,
-            "adjustment1_value_changed": self.adjust_zoom
+            "adjustment1_value_changed": self.adjust_zoom,
+            "button5_clicked": self.add_bookmark_dialog,
+            "menuitem8_activate": self.delete_bookmark
         }
         self.builder.connect_signals(handlers)
 
@@ -83,7 +115,6 @@ class App(object):
         box.pack_start(widget, True, True, 0)
 
         self.osm = widget.get_view()
-        self.go_home()
 
         # A marker layer
         self.markerlayer = Champlain.MarkerLayer()
@@ -112,6 +143,7 @@ class App(object):
         widget.connect("button-press-event", self.handle_map_mouseclick)
         self.osm.connect("notify::zoom", self.on_map_zoom_changed)
 
+        self.go_home()
 
     def init_combobox1(self):
         combobox = self.builder.get_object("combobox1")
@@ -355,10 +387,14 @@ class App(object):
             self.imagedir = chooser.get_filename()
             self.populate_store1 ()
 
-    def go_home(self, _widget=None):
-        lat, lon, zoom = self.home_location
+    def go_to_location(self, lat, lon, zoom=None):
         self.osm.center_on(lat, lon)
-        self.osm.set_zoom_level(zoom)
+        if zoom:
+            self.osm.set_zoom_level(zoom)
+
+    def go_home(self, _widget=None):
+        self.add_marker_at(*self.home_location)
+        self.go_to_location(*self.home_location)
 
     def go_to_marker(self, _widget=None):
         try:
@@ -368,14 +404,18 @@ class App(object):
         except IndexError:
             pass
 
-    def handle_map_event(self, _widget, _ignore=None):
-        lat = self.osm.get_center_latitude()
-        lon = self.osm.get_center_longitude()
-        text = "%s %.5f, %s %.5f" % (
+    def latlon_to_text(self,lat,lon):
+        return "%s %.5f, %s %.5f" % (
                 'N' if lat >= 0 else 'S', abs(lat),
                 'E' if lon >= 0 else 'W', abs(lon)
             )
+
+    def handle_map_event(self, _widget, _ignore=None):
+        lat = self.osm.get_center_latitude()
+        lon = self.osm.get_center_longitude()
+        text = self.latlon_to_text(lat,lon)
         self.clabel.set_text (text)
+        self.update_adjustment1()
 
     def handle_map_mouseclick(self, _widget, event):
         if event.button == 3:
@@ -384,15 +424,17 @@ class App(object):
             self.clicked_lat, self.clicked_lon = self.osm.y_to_latitude(event.y), self.osm.x_to_longitude(event.x)
             #self.statusbar.push(0, "LAT: %s, LON: %s" % (lat,lon))
 
-    def map_add_marker(self, _widget):
+    def add_marker_at(self, lat, lon, zoom=None):
         self.markerlayer.remove_all()
         point = Champlain.Point()
-        point.set_location(self.clicked_lat, self.clicked_lon)
-        #self.marker_location(self.clicked_lat, self.clicked_lon)
+        point.set_location(lat, lon)
         point.set_color(Clutter.Color.new(255, 0, 0, 255))
         point.set_size(self.marker_size)
         point.set_draggable(True)
         self.markerlayer.add_marker(point)
+
+    def map_add_marker(self, _widget):
+        self.add_marker_at(self.clicked_lat, self.clicked_lon)
 
     def center_map_here(self, _widget):
         self.osm.center_on(self.clicked_lat, self.clicked_lon)
@@ -415,3 +457,87 @@ class App(object):
     def on_map_zoom_changed(self):
         print (self.osm.get_zoom_level())
         self.update_adjustment1()
+
+    def add_bookmark_dialog(self, widget):
+        try:
+            m = self.markerlayer.get_markers()[0]
+            lat, lon = (m.get_latitude(), m.get_longitude())
+            self.go_to_marker()
+        except IndexError:
+            lat = self.osm.get_center_latitude()
+            lon = self.osm.get_center_longitude()
+
+        self.builder.get_object("entry1").set_text(self.latlon_to_text(lat,lon))
+        self.builder.get_object("entry2").set_text("%.5f" % lat)
+        self.builder.get_object("entry3").set_text("%.5f" % lon)
+        dialog = self.builder.get_object("dialog1")
+        response = dialog.run()
+        dialog.hide()
+        if response == Gtk.ResponseType.OK:
+            bm_id = "bookmark%d" % (len(self.bookmarks) + 1)
+            bookmark = {
+                 "name":      self.builder.get_object("entry1").get_text(),
+                 "latitude":  float(self.builder.get_object("entry2").get_text()),
+                 "longitude": float(self.builder.get_object("entry3").get_text())
+            }
+            self.bookmarks[bm_id] = bookmark
+
+        self.reload_bookmarks()
+        self.save_bookmarks()
+
+    def reload_bookmarks(self):
+        # First remove all bookmarks, i.e. all MenuItems after the first separator
+        menu = self.builder.get_object("menu5")
+        sep_found = False
+        for entry in menu.get_children():
+            if type(entry) == Gtk.SeparatorMenuItem:
+                sep_found = True
+                continue
+            if not sep_found:
+                continue
+            entry.destroy()
+
+        # Now add bookmarks as menuitems
+        for bm_id, bm in self.bookmarks.items():
+            item = Gtk.MenuItem()
+            item.set_label(bm['name'])
+            item.set_name(bm_id)
+            item.connect("button-press-event", self.handle_bookmark_click)
+            #item.connect("activate", self.go_to_bookmark)
+            menu.append(item)
+            item.show()
+
+    def save_bookmarks(self):
+        names = {}
+        latitudes = {}
+        longitudes = {}
+        for key,bm in self.bookmarks.items():
+            names[key] = bm['name']
+            latitudes[key] = bm['latitude']
+            longitudes[key] = bm['longitude']
+        v1 = GLib.Variant('a{ss}', names)
+        v2 = GLib.Variant('a{sd}', latitudes)
+        v3 = GLib.Variant('a{sd}', longitudes)
+        self.settings.set_value("bookmarks-names", v1)
+        self.settings.set_value("bookmarks-latitudes", v2)
+        self.settings.set_value("bookmarks-longitudes", v3)
+
+    def go_to_bookmark(self, widget):
+        bm_id = widget.get_name()
+        self.add_marker_at(self.bookmarks[bm_id]['latitude'], self.bookmarks[bm_id]['longitude'])
+        self.go_to_marker()
+
+    def handle_bookmark_click(self, widget, event):
+        if event.button == 3: # right click
+            self.last_clicked_bookmark = widget
+            popup = self.builder.get_object("menu7")
+            popup.popup(None, widget, None, None, event.button, event.time)
+            return True
+        else:
+            self.go_to_bookmark(widget)
+
+    def delete_bookmark(self, widget):
+        bm_id = self.last_clicked_bookmark.get_name()
+        self.last_clicked_bookmark.destroy()
+        del self.bookmarks[bm_id]
+        self.save_bookmarks()
