@@ -3,9 +3,10 @@
   <!-- interface-requires gtk+ 3.0 -->
   <object class="GtkAction" id="action1"/>
   <object class="GtkAdjustment" id="adjustment1">
-    <property name="upper">100</property>
+    <property name="upper">18</property>
     <property name="step_increment">1</property>
     <property name="page_increment">1</property>
+    <signal name="value-changed" handler="adjustment1_value_changed" swapped="no"/>
   </object>
   <object class="GtkFileChooserDialog" id="filechooserdialog1">
     <property name="can_focus">False</property>
@@ -604,10 +605,18 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <child>
-                                      <object class="GtkImage" id="image4">
+                                      <object class="GtkEventBox" id="eventbox1">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="stock">gtk-zoom-out</property>
+                                        <signal name="button-press-event" handler="eventbox1_button_press_event" swapped="no"/>
+                                        <child>
+                                          <object class="GtkImage" id="image4">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="stock">gtk-zoom-out</property>
+                                            <signal name="button-press-event" handler="image4_button_press_event" swapped="no"/>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
@@ -621,7 +630,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="adjustment">adjustment1</property>
-                                        <property name="round_digits">1</property>
+                                        <property name="round_digits">0</property>
                                         <property name="digits">0</property>
                                         <property name="draw_value">False</property>
                                       </object>
@@ -632,10 +641,18 @@
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkImage" id="image5">
+                                      <object class="GtkEventBox" id="eventbox2">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="stock">gtk-zoom-in</property>
+                                        <signal name="button-press-event" handler="eventbox2_button_press_event" swapped="no"/>
+                                        <child>
+                                          <object class="GtkImage" id="image5">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="stock">gtk-zoom-in</property>
+                                            <signal name="button-press-event" handler="image5_button_press_event" swapped="no"/>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>

@@ -28,6 +28,7 @@ class App(object):
         self.clicked_lon = 0.0
         self.marker_location = (0.0, 0.0)
         self.marker_size = 18
+        self.map_id = 'osm-mapnik'
 
     def main(self):
         self.setup_gui()
@@ -37,6 +38,7 @@ class App(object):
         self.setup_map()
         self.setup_gui_signals()
         self.populate_store1()
+        self.update_adjustment1()
         self.window.set_title('Taggert')
         self.window.show_all()
         Gtk.main()
@@ -64,7 +66,12 @@ class App(object):
             "treeview-selection2_changed": self.treeselect_changed,
             "menuitem6_activate": self.map_add_marker,
             "menuitem7_activate": self.center_map_here,
-            "button2_clicked": self.go_to_marker
+            "button2_clicked": self.go_to_marker,
+            "image4_button_press_event": self.map_zoom_out,
+            "image5_button_press_event": self.map_zoom_in,
+            "eventbox1_button_press_event": self.map_zoom_out,
+            "eventbox2_button_press_event": self.map_zoom_in,
+            "adjustment1_value_changed": self.adjust_zoom
         }
         self.builder.connect_signals(handlers)
 
@@ -103,6 +110,8 @@ class App(object):
         widget.connect("button-release-event", self.handle_map_event)
         self.osm.connect("layer-relocated", self.handle_map_event)
         widget.connect("button-press-event", self.handle_map_mouseclick)
+        self.osm.connect("notify::zoom", self.on_map_zoom_changed)
+
 
     def init_combobox1(self):
         combobox = self.builder.get_object("combobox1")
@@ -131,6 +140,16 @@ class App(object):
 
         #treeselect = tree.get_selection()
         #self.sig1 = treeselect.connect('changed', self.treeselect_changed)
+
+    def update_adjustment1(self):
+        ms = self.map_sources[self.map_id]
+        cur_zoom = self.osm.get_zoom_level()
+        min_zoom = ms.get_min_zoom_level()
+        max_zoom = ms.get_max_zoom_level()
+        adj =  self.builder.get_object("adjustment1")
+        adj.set_lower(min_zoom)
+        adj.set_upper(max_zoom)
+        adj.set_value(cur_zoom)
 
     def quit(self, _window, _event=None):
         print "Exit."
@@ -197,7 +216,7 @@ class App(object):
             'http://creativecommons.org/licenses/by-sa/2.0/',
             'http://tile.openstreetmap.org/#Z#/#X#/#Y#.png'],
 
-            ['osm-cyclemap', 'OpenStreetMap Cycle Map', 0, 17, 256,
+            ['osm-cyclemap', 'OpenStreetMap Cycle Map', 0, 18, 256,
             'Map data is CC-BY-SA 2.0 OpenStreetMap contributors',
             'http://creativecommons.org/licenses/by-sa/2.0/',
             'http://a.tile.opencyclemap.org/cycle/#Z#/#X#/#Y#.png'],
@@ -207,12 +226,12 @@ class App(object):
             'http://creativecommons.org/licenses/by-sa/2.0/',
             'http://tile.xn--pnvkarte-m4a.de/tilegen/#Z#/#X#/#Y#.png'],
 
-            ['mapquest-osm', 'MapQuest OSM', 0, 17, 256,
+            ['mapquest-osm', 'MapQuest OSM', 0, 18, 256,
             'Map data provided by MapQuest, Open Street Map and contributors',
             'http://creativecommons.org/licenses/by-sa/2.0/',
             'http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z#/#X#/#Y#.png'],
 
-            ['mapquest-sat', 'MapQuest Open Aerial', 0, 18, 256,
+            ['mapquest-sat', 'MapQuest Open Aerial', 0, 11, 256,
             'Map data provided by MapQuest, Open Street Map and contributors',
             'http://creativecommons.org/licenses/by-sa/2.0/',
             'http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z#/#X#/#Y#.jpg'],
@@ -222,27 +241,27 @@ class App(object):
             'http://www.gnu.org/copyleft/fdl.html',
             'http://maps-for-free.com/layer/relief/z#Z#/row#Y#/#Z#_#X#-#Y#.jpg'],
 
-            ['google-maps', 'Google Maps', 0, 18, 256,
+            ['google-maps', 'Google Maps', 0, 19, 256,
             'Map data Copyright 2011 Google and 3rd party suppliers',
             'https://developers.google.com/maps/terms?hl=en',
             'http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-aerial', 'Google Aerial', 0, 18, 256,
+            ['google-aerial', 'Google Aerial', 0, 22, 256,
             'Map data Copyright 2011 Google and 3rd party suppliers',
             'https://developers.google.com/maps/terms?hl=en',
             'http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-aerial-streets', 'Google Aerial with streets', 0, 18, 256,
+            ['google-aerial-streets', 'Google Aerial with streets', 0, 22, 256,
             'Map data Copyright 2011 Google and 3rd party suppliers',
             'https://developers.google.com/maps/terms?hl=en',
             'http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-terrain', 'Google Terrain', 0, 18, 256,
+            ['google-terrain', 'Google Terrain', 0, 15, 256,
             'Map data Copyright 2011 Google and 3rd party suppliers',
             'https://developers.google.com/maps/terms?hl=en',
             'http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-terrain-streets', 'Google Terrain with streets', 0, 18, 256,
+            ['google-terrain-streets', 'Google Terrain with streets', 0, 15, 256,
             'Map data Copyright 2011 Google and 3rd party suppliers',
             'https://developers.google.com/maps/terms?hl=en',
             'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X#&y=#Y#&z=#Z#'],
@@ -267,8 +286,9 @@ class App(object):
         model = combobox.get_model()
         active = combobox.get_active_iter()
         if active != None:
-            map_id = model[active][0]
-            self.osm.set_map_source(self.map_sources[map_id])
+            self.map_id = model[active][0]
+            self.osm.set_map_source(self.map_sources[self.map_id])
+            self.update_adjustment1()
 
 #    def treeview_size_allocate(self, widget, allocation):
 #        pprint(allocation.width)
@@ -376,3 +396,22 @@ class App(object):
 
     def center_map_here(self, _widget):
         self.osm.center_on(self.clicked_lat, self.clicked_lon)
+
+    def map_zoom_in(self, widget=None, event=None):
+        self.osm.zoom_in()
+        self.update_adjustment1()
+
+    def map_zoom_out(self, widget=None, event=None):
+        self.osm.zoom_out()
+        self.update_adjustment1()
+
+    def adjust_zoom(self, adj, _map=None):
+        zoom = adj.get_value()
+        cur_zoom = self.osm.get_zoom_level()
+        if zoom != cur_zoom:
+            self.osm.set_zoom_level(zoom)
+            self.update_adjustment1()
+
+    def on_map_zoom_changed(self):
+        print (self.osm.get_zoom_level())
+        self.update_adjustment1()
