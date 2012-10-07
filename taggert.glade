@@ -543,6 +543,7 @@
                         <property name="can_focus">False</property>
                         <property name="image">image6</property>
                         <property name="use_stock">False</property>
+                        <signal name="activate" handler="imagemenuitem9_activate" swapped="no"/>
                       </object>
                     </child>
                   </object>

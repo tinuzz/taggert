@@ -92,7 +92,7 @@ class App(object):
             "imagemenuitem2_activate": self.select_dir,
             "imagemenuitem3_activate": self.save_all,
             "imagemenuitem5_activate": self.quit, # File -> Quit
-            "imagemenuitem9_activate": self.quit, # File -> Quit
+            "imagemenuitem9_activate": self.delete_tag_from_selected, # File -> Quit
             "menuitem6_activate": self.map_add_marker,
             "menuitem7_activate": self.center_map_here,
             "menuitem8_activate": self.delete_bookmark,
@@ -590,15 +590,32 @@ class App(object):
                 for p in pathlist:
                     tree_iter = model.get_iter(p)
                     filename = model[tree_iter][0]
-                    model[tree_iter][3] = str(lat)
-                    model[tree_iter][4] = str(lon)
+                    model[tree_iter][3] = "%.5f" % lat
+                    model[tree_iter][4] = "%.5f" % lon
                     model[tree_iter][5] = True
                     self.modified[filename] = {'latitude': lat, 'longitude': lon}
                     i += 1
-                    #pprint(self.modified)
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
                 pass
+
+    def delete_tag_from_selected(self, widget):
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if pathlist:
+            i=0
+            for p in pathlist:
+                tree_iter = model.get_iter(p)
+                lat = model.get_value(tree_iter,3)
+                lon = model.get_value(tree_iter,4)
+                if lat or lon:
+                    filename = model[tree_iter][0]
+                    model[tree_iter][3] = ''
+                    model[tree_iter][4] = ''
+                    model[tree_iter][5] = True
+                    self.modified[filename] = {'latitude': '', 'longitude': ''}
+                    i += 1
+            self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
 
     def dms_to_decimal(self, degrees, minutes, seconds, sign=' '):
         return (-1 if sign[0] in 'SWsw' else 1) * (
@@ -621,21 +638,32 @@ class App(object):
         menuitem = self.builder.get_object("checkmenuitem1")
         if menuitem.get_active():
             self.populate_store1()
-        self.show_infobar("%d images saved" % self.savecounter)
+        self.show_infobar("%d image%s saved" % (self.savecounter, '' if self.savecounter == 1 else 's'))
 
     def treestore_save_modified(self, model, path, tree_iter, userdata):
         fl = model.get_value(tree_iter,0)
         if model.get_value(tree_iter,5): # "modified"
             fname = os.path.join(self.imagedir, fl)
-            lat = float(model.get_value(tree_iter,3))
-            lon = float(model.get_value(tree_iter,4))
             metadata = pyexiv2.ImageMetadata(fname)
             metadata.read()
-            metadata['Exif.GPSInfo.GPSLatitude'] = self.decimal_to_dms(lat)
-            metadata['Exif.GPSInfo.GPSLongitude'] = self.decimal_to_dms(lon)
-            metadata['Exif.GPSInfo.GPSLatitudeRef'] = 'N' if lat >= 0 else 'S'
-            metadata['Exif.GPSInfo.GPSLongitudeRef'] = 'E' if lon >= 0 else 'W'
-            metadata['Exif.GPSInfo.GPSMapDatum'] = 'WGS-84'
+            try:
+                lat = float(model.get_value(tree_iter,3))
+                lon = float(model.get_value(tree_iter,4))
+                metadata['Exif.GPSInfo.GPSLatitude'] = self.decimal_to_dms(lat)
+                metadata['Exif.GPSInfo.GPSLongitude'] = self.decimal_to_dms(lon)
+                metadata['Exif.GPSInfo.GPSLatitudeRef'] = 'N' if lat >= 0 else 'S'
+                metadata['Exif.GPSInfo.GPSLongitudeRef'] = 'E' if lon >= 0 else 'W'
+                metadata['Exif.GPSInfo.GPSMapDatum'] = 'WGS-84'
+            # If the tag is empty, the conversion to float will fail with a ValueError
+            except ValueError:
+                try:
+                    del metadata['Exif.GPSInfo.GPSLatitude']
+                    del metadata['Exif.GPSInfo.GPSLongitude']
+                    del metadata['Exif.GPSInfo.GPSLatitudeRef']
+                    del metadata['Exif.GPSInfo.GPSLongitudeRef']
+                    del metadata['Exif.GPSInfo.GPSMapDatum']
+                except KeyError:
+                    pass
             metadata.write()
             model[tree_iter][5] = False  # saved => not modified
             del self.modified[fl]
