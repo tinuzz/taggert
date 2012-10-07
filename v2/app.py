@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import os
 import pyexiv2
+import fractions
+from math import modf
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
 from gi.repository import Clutter
 from gi.repository import Gtk, GtkChamplain
@@ -32,6 +34,7 @@ class App(object):
         self.map_id = 'osm-mapnik'
         self.bookmarks = {}
         self.last_clicked_bookmark = None
+        self.modified = {}
 
     def main(self):
         self.read_settings()
@@ -79,32 +82,34 @@ class App(object):
         self.window = self.builder.get_object("window1")
         self.window.set_default_size(1200, 768)
         self.window.set_position(Gtk.WindowPosition.CENTER)
-        #chooser = self.builder.get_object ("filechooserdialog1")
-        #chooser.add_button("OK", Gtk.ResponseType.OK)
-        #chooser.add_button("Cancel", Gtk.ResponseType.CANCEL)
         self.statusbar = self.builder.get_object("statusbar1")
 
     def setup_gui_signals(self):
 
         handlers = {
             "window1_delete_event": self.quit,
-            "imagemenuitem5_activate": self.quit, # File -> Quit
-            "imagemenuitem2_activate": self.select_dir,
             "imagemenuitem1_activate": self.go_home,
+            "imagemenuitem2_activate": self.select_dir,
+            "imagemenuitem3_activate": self.save_all,
+            "imagemenuitem5_activate": self.quit, # File -> Quit
+            "imagemenuitem9_activate": self.quit, # File -> Quit
+            "menuitem6_activate": self.map_add_marker,
+            "menuitem7_activate": self.center_map_here,
+            "menuitem8_activate": self.delete_bookmark,
             "combobox1_changed": self.combobox_changed,
             "checkmenuitem1_toggled": self.populate_store1,
             "treeview-selection2_changed": self.treeselect_changed,
-            "menuitem6_activate": self.map_add_marker,
-            "menuitem7_activate": self.center_map_here,
-            "button2_clicked": self.go_to_marker,
             "image4_button_press_event": self.map_zoom_out,
             "image5_button_press_event": self.map_zoom_in,
             "eventbox1_button_press_event": self.map_zoom_out,
             "eventbox2_button_press_event": self.map_zoom_in,
             "adjustment1_value_changed": self.adjust_zoom,
+            "button1_clicked": self.tag_selected_from_marker,
+            "button2_clicked": self.go_to_marker,
+            "button4_clicked": self.go_to_image,
             "button5_clicked": self.add_bookmark_dialog,
-            "menuitem8_activate": self.delete_bookmark,
-            "button1_clicked": self.tag_selected_from_marker
+            "button6_clicked": self.save_all,
+            "button14_clicked": self.hide_infobar
         }
         self.builder.connect_signals(handlers)
 
@@ -155,10 +160,11 @@ class App(object):
 
     def init_treeview1(self):
         renderer = Gtk.CellRendererText()
-        col0 = Gtk.TreeViewColumn("Filename", renderer, text=0)
-        col1 = Gtk.TreeViewColumn("EXIF DateTime", renderer, text=1)
-        col2 = Gtk.TreeViewColumn("Latitude", renderer, text=3)
-        col3 = Gtk.TreeViewColumn("Longitude", renderer, text=4)
+        renderer.set_property('cell-background', 'yellow')
+        col0 = Gtk.TreeViewColumn("Filename", renderer, text=0, cell_background_set=5)
+        col1 = Gtk.TreeViewColumn("EXIF DateTime", renderer, text=1, cell_background_set=5)
+        col2 = Gtk.TreeViewColumn("Latitude", renderer, text=3, cell_background_set=5)
+        col3 = Gtk.TreeViewColumn("Longitude", renderer, text=4, cell_background_set=5)
 
         col0.set_sort_column_id(0)
         col1.set_sort_column_id(1)
@@ -166,10 +172,14 @@ class App(object):
         col3.set_sort_column_id(4)
 
         tree = self.builder.get_object("treeview1")
+        model =  self.builder.get_object("liststore1").set_sort_column_id(0,  Gtk.SortType.ASCENDING)
+        #tree.set_model(model)
         tree.append_column(col0)
         tree.append_column(col1)
         tree.append_column(col2)
         tree.append_column(col3)
+
+        #self.builder.get_object("liststore1").emit("sort-column-changed")
 
         #treeselect = tree.get_selection()
         #self.sig1 = treeselect.connect('changed', self.treeselect_changed)
@@ -185,8 +195,9 @@ class App(object):
         adj.set_value(cur_zoom)
 
     def quit(self, _window, _event=None):
-        print "Exit."
-        Gtk.main_quit()
+        if self.save_modified_dialog():
+            print "Exit."
+            Gtk.main_quit()
 
     def populate_store1(self, widget=None):
 
@@ -206,6 +217,8 @@ class App(object):
                     fname = os.path.join(self.imagedir, fl)
                     if not os.path.isdir(fname):
                         if os.path.splitext(fname)[1].lower() == ".jpg":
+                            data = None
+                            modf = False
                             metadata = pyexiv2.ImageMetadata(fname)
                             metadata.read()
                             try:
@@ -217,15 +230,30 @@ class App(object):
                             except KeyError:
                                 rot = '1'
                             try:
-                                imglat = metadata['Exif.GPSInfo.GPSLatitude'].human_value
+                                data =  self.modified[fl]
+                                imglat = data['latitude']
+                                modf = True
                             except KeyError:
-                                imglat = ''
+                                try:
+                                    args1 = metadata['Exif.GPSInfo.GPSLatitude'].value
+                                    args2 = metadata['Exif.GPSInfo.GPSLatitudeRef'].value
+                                    args3 = args1 + [args2]
+                                    imglat = self.dms_to_decimal(*args3)
+                                except KeyError:
+                                    imglat = ''
                             try:
-                                imglon = metadata['Exif.GPSInfo.GPSLongitude'].human_value
+                                data =  self.modified[fl]
+                                imglon = data['longitude']
                             except KeyError:
-                                imglon = ''
-                            if not checked or imglat == '' or imglon == '':
-                                store.append([fl, dt, rot, imglat, imglon])
+                                try:
+                                    args1 = metadata['Exif.GPSInfo.GPSLongitude'].value
+                                    args2 = metadata['Exif.GPSInfo.GPSLongitudeRef'].value
+                                    args3 = args1 + [args2]
+                                    imglon = self.dms_to_decimal(*args3)
+                                except KeyError:
+                                    imglon = ''
+                            if not checked or imglat == '' or imglon == '' or data:
+                                store.append([fl, dt, rot, str(imglat), str(imglon), modf])
                                 shown += 1
                             else:
                                 notshown += 1
@@ -369,25 +397,38 @@ class App(object):
                 #preview.set_from_pixbuf(pb)
                 preview.set_from_pixbuf(pb)
 
+
+    def save_modified_dialog(self):
+        if self.modified:
+            dialog = self.builder.get_object('messagedialog1')
+            result = dialog.run()
+            dialog.hide()
+            if result == Gtk.ResponseType.CANCEL:
+                return False
+            elif result == Gtk.ResponseType.YES:  # Save all
+                self.save_all()
+        return True
+
     def select_dir(self, widget):
         #chooser = gtk.FileChooserDialog(title='Select folder',action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
         #    buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
         #chooser = Gtk.FileChooserDialog("Select image folder", None, )
 
-        print "Choose dir"
-        chooser = self.builder.get_object ("filechooserdialog1")
+        if self.save_modified_dialog():
+            chooser = self.builder.get_object ("filechooserdialog1")
 
-        # If the current dir is local (i.e. it starts with a '/'),
-        # make the filechooser start there
-        if self.imagedir[0] == '/':
-            chooser.set_current_folder_uri('file://%s' % self.imagedir)
+            # If the current dir is local (i.e. it starts with a '/'),
+            # make the filechooser start there
+            if self.imagedir[0] == '/':
+                chooser.set_current_folder_uri('file://%s' % self.imagedir)
 
-        response = chooser.run()
-        chooser.hide()
-        if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-            #print "Dir chosen: %s" % self.imagedir
-            self.imagedir = chooser.get_filename()
-            self.populate_store1 ()
+            response = chooser.run()
+            chooser.hide()
+            if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
+                #print "Dir chosen: %s" % self.imagedir
+                self.imagedir = chooser.get_filename()
+                self.modified = {}
+                self.populate_store1 ()
 
     def go_to_location(self, lat, lon, zoom=None):
         self.osm.center_on(lat, lon)
@@ -529,6 +570,19 @@ class App(object):
         self.add_marker_at(self.bookmarks[bm_id]['latitude'], self.bookmarks[bm_id]['longitude'])
         self.go_to_marker()
 
+    def go_to_image(self, widget):
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if pathlist:
+            # Get the first selected picture
+            p = pathlist[0]
+            tree_iter = model.get_iter(p)
+            lat = model.get_value(tree_iter,3)
+            lon = model.get_value(tree_iter,4)
+            if lat and lon:
+                self.add_marker_at(float(lat),float(lon))
+                self.go_to_marker()
+
     def handle_bookmark_click(self, widget, event):
         if event.button == 3: # right click
             self.last_clicked_bookmark = widget
@@ -549,11 +603,69 @@ class App(object):
         model,pathlist = treeselect.get_selected_rows()
         if pathlist:
             try:
+                i=0
                 m = self.markerlayer.get_markers()[0]
                 lat, lon = (m.get_latitude(), m.get_longitude())
                 for p in pathlist:
                     tree_iter = model.get_iter(p)
+                    filename = model[tree_iter][0]
                     model[tree_iter][3] = str(lat)
                     model[tree_iter][4] = str(lon)
+                    model[tree_iter][5] = True
+                    self.modified[filename] = {'latitude': lat, 'longitude': lon}
+                    i += 1
+                    #pprint(self.modified)
+                self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
                 pass
+
+    def dms_to_decimal(self, degrees, minutes, seconds, sign=' '):
+        return (-1 if sign[0] in 'SWsw' else 1) * (
+            float(degrees)        +
+            float(minutes) / 60   +
+            float(seconds) / 3600
+        )
+
+    def decimal_to_dms(self, decimal):
+        remainder, degrees = modf(abs(decimal))
+        remainder, minutes = modf(remainder * 60)
+        return [fractions.Fraction.from_float(n).limit_denominator(99999) for n in (degrees, minutes, remainder * 60)]
+
+    def save_all(self, widget=None):
+        model = self.builder.get_object('treeview1').get_model()
+        self.savecounter = 0
+        model.foreach(self.treestore_save_modified, None)
+
+        # If we only want to see untagged images, repopulate the treeview
+        menuitem = self.builder.get_object("checkmenuitem1")
+        if menuitem.get_active():
+            self.populate_store1()
+        self.show_infobar("%d images saved" % self.savecounter)
+
+    def treestore_save_modified(self, model, path, tree_iter, userdata):
+        fl = model.get_value(tree_iter,0)
+        if model.get_value(tree_iter,5): # "modified"
+            fname = os.path.join(self.imagedir, fl)
+            lat = float(model.get_value(tree_iter,3))
+            lon = float(model.get_value(tree_iter,4))
+            metadata = pyexiv2.ImageMetadata(fname)
+            metadata.read()
+            metadata['Exif.GPSInfo.GPSLatitude'] = self.decimal_to_dms(lat)
+            metadata['Exif.GPSInfo.GPSLongitude'] = self.decimal_to_dms(lon)
+            metadata['Exif.GPSInfo.GPSLatitudeRef'] = 'N' if lat >= 0 else 'S'
+            metadata['Exif.GPSInfo.GPSLongitudeRef'] = 'E' if lon >= 0 else 'W'
+            metadata['Exif.GPSInfo.GPSMapDatum'] = 'WGS-84'
+            metadata.write()
+            model[tree_iter][5] = False  # saved => not modified
+            del self.modified[fl]
+            self.savecounter += 1
+
+    def show_infobar(self, text, timeout=5):
+        self.builder.get_object("label9").set_text(text)
+        self.builder.get_object("infobar1").show()
+        GLib.timeout_add_seconds(timeout, self.hide_infobar)
+
+    def hide_infobar(self, widget=None):
+        self.builder.get_object("infobar1").hide()
+        # return False to cancel the timer
+        return False
