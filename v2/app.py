@@ -159,6 +159,7 @@ class App(object):
         combobox.set_active(0)
 
     def init_treeview1(self):
+        self.builder.get_object("liststore1").set_sort_column_id(0,  Gtk.SortType.ASCENDING)
         renderer = Gtk.CellRendererText()
         renderer.set_property('cell-background', 'yellow')
         col0 = Gtk.TreeViewColumn("Filename", renderer, text=0, cell_background_set=5)
@@ -172,17 +173,10 @@ class App(object):
         col3.set_sort_column_id(4)
 
         tree = self.builder.get_object("treeview1")
-        model =  self.builder.get_object("liststore1").set_sort_column_id(0,  Gtk.SortType.ASCENDING)
-        #tree.set_model(model)
         tree.append_column(col0)
         tree.append_column(col1)
         tree.append_column(col2)
         tree.append_column(col3)
-
-        #self.builder.get_object("liststore1").emit("sort-column-changed")
-
-        #treeselect = tree.get_selection()
-        #self.sig1 = treeselect.connect('changed', self.treeselect_changed)
 
     def update_adjustment1(self):
         ms = self.map_sources[self.map_id]
@@ -351,14 +345,7 @@ class App(object):
             self.osm.set_map_source(self.map_sources[self.map_id])
             self.update_adjustment1()
 
-#    def treeview_size_allocate(self, widget, allocation):
-#        pprint(allocation.width)
-#        paned = self.builder.get_object("paned1")
-#        #paned.set_attribute ("position", allocation.width)
-#        paned.position = allocation.width
-
     def treeselect_changed (self, treeselect):
-        #pprint(self.osm.get_center_latitude())
         if self.filelist_locked:
             return
         if treeselect:
@@ -410,10 +397,6 @@ class App(object):
         return True
 
     def select_dir(self, widget):
-        #chooser = gtk.FileChooserDialog(title='Select folder',action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
-        #    buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
-        #chooser = Gtk.FileChooserDialog("Select image folder", None, )
-
         if self.save_modified_dialog():
             chooser = self.builder.get_object ("filechooserdialog1")
 
@@ -425,7 +408,6 @@ class App(object):
             response = chooser.run()
             chooser.hide()
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-                #print "Dir chosen: %s" % self.imagedir
                 self.imagedir = chooser.get_filename()
                 self.modified = {}
                 self.populate_store1 ()
@@ -465,7 +447,6 @@ class App(object):
             menu = self.builder.get_object("menu6")
             menu.popup(None, None, None, None, event.button, event.time)
             self.clicked_lat, self.clicked_lon = self.osm.y_to_latitude(event.y), self.osm.x_to_longitude(event.x)
-            #self.statusbar.push(0, "LAT: %s, LON: %s" % (lat,lon))
 
     def add_marker_at(self, lat, lon, zoom=None):
         self.markerlayer.remove_all()
