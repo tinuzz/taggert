@@ -1,0 +1,558 @@
+#!/usr/bin/python
+
+"""
+Copyright (C) Hadley Rich 2008 <hads@nice.net.nz>
+based on main.c - with thanks to John Stowers
+
+This is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License
+as published by the Free Software Foundation; version 2.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, see <http://www.gnu.org/licenses/>.
+"""
+
+import sys
+import os.path
+import os
+import gtk.gdk
+import gobject
+import pyexiv2  # apt-get install python-pyexiv2
+
+gobject.threads_init()
+gtk.gdk.threads_init()
+
+#Try static lib first
+mydir = os.path.dirname(os.path.abspath(__file__))
+libdir = os.path.abspath(os.path.join(mydir, "..", "python", ".libs"))
+sys.path.insert(0, libdir)
+
+import osmgpsmap  # apt-get install python-osmgpsmap
+#print "using library: %s (version %s)" % (osmgpsmap.__file__, osmgpsmap.__version__)
+
+assert osmgpsmap.__version__ == "0.7.3"
+
+class DummyMapNoGpsPoint(osmgpsmap.GpsMap):
+    def do_draw_gps_point(self, drawable):
+        pass
+gobject.type_register(DummyMapNoGpsPoint)
+
+class DummyLayer(gobject.GObject, osmgpsmap.GpsMapLayer):
+    def __init__(self):
+        gobject.GObject.__init__(self)
+
+    def do_draw(self, gpsmap, gdkdrawable):
+        pass
+
+    def do_render(self, gpsmap):
+        pass
+
+    def do_busy(self):
+        return False
+
+    def do_button_press(self, gpsmap, gdkeventbutton):
+        return False
+gobject.type_register(DummyLayer)
+
+class UI(gtk.Window):
+    def __init__(self):
+        gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
+
+        self.set_default_size(1024, 768)
+        self.set_position(gtk.WIN_POS_CENTER)
+        self.connect('destroy', lambda x: gtk.main_quit())
+        self.set_title('Taggert')
+
+        self.target_lat = 0
+        self.target_lon = 0
+
+        self.vbox0 = gtk.VBox(False,0)
+        self.add(self.vbox0)
+
+        self.ui_menu ()
+
+        self.hbox0 = gtk.HBox(False, 0)
+        self.vbox0.pack_start(self.hbox0)
+
+        self.imagedir='/home/martijn/Pictures/2012'
+
+        self.imagestore = gtk.ListStore(gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
+        self.populate_store(self.imagestore, self.imagedir)
+
+        treeview = gtk.TreeView(model=self.imagestore)
+        self.treeselect = treeview.get_selection()
+        self.treeselect.set_mode(gtk.SELECTION_MULTIPLE)
+        treeview.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_HORIZONTAL)
+        treeview.connect('cursor-changed', self.filelist_file_selected)
+
+        cell = gtk.CellRendererText()
+        #cell.set_property('cell-background', 'cyan')
+        col0 = gtk.TreeViewColumn('Filename', cell, text=0)
+        col0.set_min_width(180)
+        col0.set_max_width(190)
+        col0.set_sort_column_id(0)
+        treeview.append_column(col0)
+
+        cell = gtk.CellRendererText()
+        #cell.set_property('cell-background', 'cyan')
+        col1 = gtk.TreeViewColumn('EXIF DateTime', cell, text=1)
+        col1.set_min_width(140)
+        col1.set_sort_column_id(1)
+        treeview.append_column(col1)
+
+        #cell = gtk.CellRendererText()
+        #col2 = gtk.TreeViewColumn('Or', cell, text=2)
+        #treeview.append_column(col2)
+
+        cell = gtk.CellRendererText()
+        col3 = gtk.TreeViewColumn('Lat', cell, text=3)
+        treeview.append_column(col3)
+
+        cell = gtk.CellRendererText()
+        col4 = gtk.TreeViewColumn('Lon', cell, text=4)
+        treeview.append_column(col4)
+
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+        self.hbox0.pack_start(sw, False)
+        #sw.show()
+        sw.add(treeview)
+
+        self.vbox = gtk.VBox(False, 0)
+        self.hbox0.pack_start(self.vbox)
+
+
+        self.combobox = gtk.combo_box_new_text()
+        self.vbox.pack_start(self.combobox, False, False)
+        self.combobox.append_text("OpenStreetMap")
+        self.combobox.append_text("Google Maps")
+        self.combobox.append_text("MapQuest OSM")
+        self.combobox.append_text("MapQuest Open Aerial")
+        self.combobox.append_text("OpenCycleMap")
+        self.combobox.append_text("Google Aerial")
+        self.combobox.append_text("Google Aerial with streets")
+        self.combobox.append_text("Google Terrain")
+        self.combobox.append_text("Google Terrain with streets")
+        self.combobox.append_text("Maps for Free relief")
+        self.combobox.set_active(0)
+        self.combobox.connect('changed', self.combobox_changed)
+
+
+        if 0:
+            self.osm = DummyMapNoGpsPoint()
+        else:
+            self.osm = osmgpsmap.GpsMap()
+        self.osm.layer_add(
+                    DummyLayer())
+
+        self.osm.connect('button_release_event', self.map_clicked)
+        self.osm.connect('button_press_event', self.map_clicked2)
+
+        #connect keyboard shortcuts
+        self.osm.set_keyboard_shortcut(osmgpsmap.KEY_FULLSCREEN, gtk.gdk.keyval_from_name("F11"))
+        self.osm.set_keyboard_shortcut(osmgpsmap.KEY_UP, gtk.gdk.keyval_from_name("Up"))
+        self.osm.set_keyboard_shortcut(osmgpsmap.KEY_DOWN, gtk.gdk.keyval_from_name("Down"))
+        self.osm.set_keyboard_shortcut(osmgpsmap.KEY_LEFT, gtk.gdk.keyval_from_name("Left"))
+        self.osm.set_keyboard_shortcut(osmgpsmap.KEY_RIGHT, gtk.gdk.keyval_from_name("Right"))
+
+        #connect to tooltip
+        self.osm.props.has_tooltip = True
+        self.osm.connect("query-tooltip", self.on_query_tooltip)
+
+        self.vbox.pack_start(self.osm)
+
+        #add ability to test custom map URIs
+
+        self.repouri = self.osm.props.repo_uri
+        self.repoformat = self.osm.props.image_format
+
+        self.statusbar = gtk.Statusbar()
+        self.statusbar.set_has_resize_grip(False)
+        self.vbox0.pack_end(self.statusbar, False)
+
+        self.ui_zoomslider()
+
+        self.show_tooltips = True
+        #cb = gtk.CheckButton("Show Location in Tooltips")
+        #cb.props.active = self.show_tooltips
+        #cb.connect("toggled", self.on_show_tooltips_toggled)
+        #self.vbox.pack_end(cb, False)
+
+        #cb = gtk.CheckButton("Disable Cache")
+        #cb.props.active = False
+        #cb.connect("toggled", self.disable_cache_toggled)
+        #self.vbox.pack_end(cb, False)
+
+        hbox = gtk.HBox(False, 0)
+        self.vbox.pack_end(hbox, False)
+
+        self.pvframe = gtk.Frame('Image preview')
+        self.pvframe.set_size_request(314, 225)
+        self.pvframe.set_border_width(3)
+
+        self.preview = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)
+        self.preview.set_padding(2,2)
+        self.pvframe.add(self.preview)
+        hbox.pack_start(self.pvframe, False)
+
+        acbframe = gtk.Frame('Actions')
+        acbframe.set_border_width(3)
+        hbox.pack_start(acbframe)
+
+        hbox2 = gtk.HBox()
+        acbframe.add(hbox2)
+
+        vbox2 = gtk.VBox()
+        vbox3 = gtk.VBox()
+        hbox2.pack_start(vbox2)
+        hbox2.pack_start(vbox3)
+
+        self.tagbutton = gtk.Button("Tag manually")
+        self.tagbutton.set_border_width(3)
+        self.tagbutton.set_sensitive(False)
+        vbox2.pack_start(self.tagbutton, False, False)
+
+        clearbutton = gtk.Button("Remove tags")
+        clearbutton.set_border_width(3)
+        vbox3.pack_start(clearbutton, False, False)
+
+        self.findbutton = gtk.Button("Go to marker")
+        self.findbutton.set_border_width(3)
+        self.findbutton.set_sensitive(False)
+        self.findbutton.connect('clicked', self.findbutton_clicked)
+        vbox2.pack_start(self.findbutton, False, False)
+
+        #gobject.timeout_add(500, self.print_tiles)
+
+    def ui_menu (self):
+
+        # Menubar
+        self.mb = gtk.MenuBar()
+        self.vbox0.pack_start(self.mb, False, False, 0)
+
+        # File menu
+        filemenu = gtk.Menu()
+        filem = gtk.MenuItem("File")
+        self.mb.append(filem)
+        filem.set_submenu(filemenu)
+
+        # Open file
+        openm = gtk.ImageMenuItem(gtk.STOCK_DIRECTORY)
+        openm.set_label("Select image folder")
+        openm.connect("activate", self.select_dir)
+        filemenu.append(openm)
+
+        sep = gtk.SeparatorMenuItem()
+        filemenu.append(sep)
+
+        # Quit
+        exit = gtk.ImageMenuItem(gtk.STOCK_QUIT)
+        exit.connect("activate", gtk.main_quit)
+        filemenu.append(exit)
+
+        # Bookmarks menu
+        bmmenu = gtk.Menu()
+        bmm = gtk.MenuItem("Bookmarks")
+        self.mb.append(bmm)
+        bmm.set_submenu(bmmenu)
+
+        # Home
+        homem = gtk.ImageMenuItem(gtk.STOCK_HOME)
+        homem.connect("activate", self.home_clicked)
+        bmmenu.append(homem)
+
+        sep = gtk.SeparatorMenuItem()
+        bmmenu.append(sep)
+
+        # Help menu
+        helpmenu = gtk.Menu()
+        helpm = gtk.MenuItem("Help")
+        self.mb.append(helpm)
+        helpm.set_submenu(helpmenu)
+
+    def ui_zoomslider (self):
+        self.zoomSlider = MapZoomSlider(self.osm)
+        self.zoomSlider.show_all()
+        a = gtk.Alignment(0.5,0.5,1.0,1.0)
+        a.set_padding(0,0,0,4)
+        a.add(self.zoomSlider)
+        a.show_all()
+        self.statusbar.pack_end(a, False, False, padding=4)
+
+    def select_dir(self, widget):
+        chooser = gtk.FileChooserDialog(title='Select folder',action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+
+        # If the current dir is local (i.e. it starts with a '/'),
+        # make the filechooser start there
+        if self.imagedir[0] == '/':
+            chooser.set_current_folder_uri('file://%s' % self.imagedir)
+
+        chooser.run()
+        self.imagedir = chooser.get_filename()
+        self.populate_store (self.imagestore, self.imagedir)
+        self.statusbar.push(0, chooser.get_current_folder_uri())
+        chooser.destroy()
+
+    def filelist_file_selected (self, treeview):
+        path, column = treeview.get_cursor()
+        model,pathlist = self.treeselect.get_selected_rows()
+        if pathlist:
+            p = pathlist[0]
+            tree_iter = model.get_iter(p)
+            value = model.get_value(tree_iter,0)
+            orientation = model.get_value(tree_iter,2)
+            filename = os.path.join(self.imagedir, value)
+            pb = gtk.gdk.pixbuf_new_from_file_at_size(filename, 300, 200)
+            if orientation == '6':
+                pb = pb.rotate_simple(gtk.gdk.PIXBUF_ROTATE_CLOCKWISE)
+            elif orientation == '8':
+                pb = pb.rotate_simple(gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE)
+            self.preview.set_from_pixbuf(pb)
+            w,h = self.pvframe.size_request()
+            self.statusbar.push(0, 'Value: %s, orientation: %s, width: %s, height: %s' % (value, orientation, w, h))
+
+    def populate_store (self, store, imagedir):
+        store.clear()
+        if imagedir:
+            for fl in os.listdir(imagedir):
+                if not fl[0] == '.':
+                    fname = os.path.join(imagedir, fl)
+                    if not os.path.isdir(fname):
+                        if os.path.splitext(fname)[1].lower() == ".jpg":
+                            metadata = pyexiv2.ImageMetadata(fname)
+                            metadata.read()
+                            try:
+                                dt = metadata['Exif.Image.DateTime'].raw_value
+                            except KeyError:
+                                dt = ''
+                            try:
+                                rot =  metadata['Exif.Image.Orientation'].raw_value
+                            except KeyError:
+                                rot = 1
+                            try:
+                                imglat = metadata['Exif.GPSInfo.GPSLatitude'].human_value
+                            except KeyError:
+                                imglat = ''
+                            try:
+                                imglon = metadata['Exif.GPSInfo.GPSLongitude'].human_value
+                            except KeyError:
+                                imglon = ''
+
+                            store.append([fl, dt, rot, imglat, imglon])
+
+    def disable_cache_toggled(self, btn):
+        if btn.props.active:
+            self.osm.props.tile_cache = osmgpsmap.CACHE_DISABLED
+        else:
+            self.osm.props.tile_cache = osmgpsmap.CACHE_AUTO
+
+    def on_show_tooltips_toggled(self, btn):
+        self.show_tooltips = btn.props.active
+
+    def combobox_changed (self, combobox):
+        model = combobox.get_model()
+        index = combobox.get_active()
+        self.statusbar.push(0,'blabla %d' % index)
+        # Use http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z for Google maps
+        # Use http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg for Mapquest-OSM
+        # Use http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg for Mapquest Open Aerial satellite images
+        # Use http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png for Opencyclemap
+        # Use http://maps-for-free.com/layer/relief/z#Z/row#Y/#Z_#X-#Y.jpg for MFF Relief
+        if index == 0:
+            self.repouri = 'http://tile.openstreetmap.org/#Z/#X/#Y.png'
+            self.repoformat = 'png'
+        elif index == 1:
+            self.repouri = 'http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
+        elif index == 2:
+            self.repouri = 'http://otile1.mqcdn.com/tiles/1.0.0/osm/#Z/#X/#Y.jpg'
+            self.repoformat = 'jpg'
+        elif index == 3:
+            self.repouri = 'http://oatile1.mqcdn.com/tiles/1.0.0/sat/#Z/#X/#Y.jpg'
+            self.repoformat = 'jpg'
+        elif index == 4:
+            self.repouri = 'http://c.tile.opencyclemap.org/cycle/#Z/#X/#Y.png'
+            self.repoformat = 'png'
+        elif index == 5:
+            self.repouri = 'http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
+        elif index == 6:
+            self.repouri = 'http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
+        elif index == 7:
+            self.repouri = 'http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
+        elif index == 8:
+            self.repouri = 'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X&y=#Y&z=#Z'
+            self.repoformat = 'png'
+        elif index == 9:
+            self.repouri = 'http://maps-for-free.com/layer/relief/z#Z/row#Y/#Z_#X-#Y.jpg'
+            self.repoformat = 'jpg'
+
+        self.load_map_clicked (0)
+        self.vbox.reorder_child(self.combobox,1)
+
+    def load_map_clicked(self, button):
+        tmpzoom = self.osm.props.zoom
+        tmplat = self.osm.props.latitude
+        tmplon = self.osm.props.longitude
+        uri = self.repouri
+        format = self.repoformat
+        if uri and format:
+            if self.osm:
+                #remove old map
+                self.vbox.remove(self.osm)
+            try:
+                self.osm = osmgpsmap.GpsMap(
+                    repo_uri=uri,
+                    image_format=format
+                )
+            except Exception, e:
+                print "ERROR:", e
+                self.osm = osmgpsmap.GpsMap()
+
+            #self.osm.layer_add( osmgpsmap.GpsMapOsd(
+            #                show_dpad=True,
+            #                show_zoom=True))
+
+            self.vbox.pack_start(self.osm, True)
+            self.osm.connect('button_release_event', self.map_clicked)
+            self.osm.connect('button_press_event', self.map_clicked2)
+            self.osm.set_center_and_zoom(tmplat, tmplon, tmpzoom)
+            self.draw_target()
+            self.osm.show()
+
+            # reconnect the zoomslider controls
+            self.zoomSlider.zo.connect("button-press-event", self.zoomSlider._on_zoom_out_pressed, self.osm)
+            self.zoomSlider.zoom.connect("value-changed", self.zoomSlider._on_zoom_slider_value_changed, self.osm)
+            self.zoomSlider.zi.connect("button-press-event", self.zoomSlider._on_zoom_in_pressed, self.osm)
+            self.osm.connect("notify::zoom", self.zoomSlider._on_map_zoom_changed)
+
+    def print_tiles(self):
+        #if self.osm.props.tiles_queued != 0:
+        #    print self.osm.props.tiles_queued, 'tiles queued'
+        return True
+
+    def zoom_in_clicked(self, button):
+        self.osm.set_zoom(self.osm.props.zoom + 1)
+        self.statusbar.push(0, "Zoom factor: %d" % self.osm.props.zoom)
+
+    def zoom_out_clicked(self, button):
+        if self.osm.props.zoom > 1:
+            self.osm.set_zoom(self.osm.props.zoom - 1)
+        self.statusbar.push(0, "Zoom factor: %d" % self.osm.props.zoom)
+
+    def home_clicked(self, button):
+        self.osm.set_center_and_zoom(51.436035, 5.47840, 13)
+
+    def findbutton_clicked(self, button):
+        self.osm.set_center_and_zoom(self.target_lat, self.target_lon, self.osm.props.zoom)
+
+    def on_query_tooltip(self, widget, x, y, keyboard_tip, tooltip, data=None):
+        if keyboard_tip:
+            return False
+
+        if self.show_tooltips:
+            p = osmgpsmap.point_new_degrees(0.0, 0.0)
+            self.osm.convert_screen_to_geographic(x, y, p)
+            lat,lon = p.get_degrees()
+            tooltip.set_markup("%+.4f, %+.4f" % p.get_degrees())
+            return True
+
+        return False
+
+    def cache_clicked(self, button):
+        bbox = self.osm.get_bbox()
+        self.osm.download_maps(
+            *bbox,
+            zoom_start=self.osm.props.zoom,
+            zoom_end=self.osm.props.max_zoom
+        )
+
+    def map_clicked2 (self, osm, event):
+        if event.type == gtk.gdk._2BUTTON_PRESS:
+            self.zoom_in_clicked(0)
+
+    def map_clicked(self, osm, event):
+        lat,lon = self.osm.get_event_location(event).get_degrees()
+        if event.button == 1:
+            self.statusbar.push(0, 'Map Centre: latitude %s longitude %s' % (self.osm.props.latitude, self.osm.props.longitude))
+        elif event.button == 2:
+            self.osm.gps_add(lat, lon, heading=osmgpsmap.INVALID);
+        elif event.button == 3:
+            self.osm.image_remove_all()
+            self.target_lat = lat
+            self.target_lon = lon
+            self.draw_target()
+            self.tagbutton.set_sensitive(True)
+            self.findbutton.set_sensitive(True)
+            self.statusbar.push(0, 'Marker: latitude %s longitude %s' % (lat, lon))
+
+    def draw_target(self):
+        if self.target_lat and self.target_lon:
+            pb = gtk.gdk.pixbuf_new_from_file_at_size ("crosshair.png", 24,24)
+            self.osm.image_add(self.target_lat, self.target_lon, pb)
+
+class MapZoomSlider(gtk.HBox):
+    def __init__(self, _map):
+        gtk.HBox.__init__(self)
+        self.zo = gtk.EventBox()
+        self.zo.add(gtk.image_new_from_stock (gtk.STOCK_ZOOM_OUT, gtk.ICON_SIZE_MENU))
+        self.zo.connect("button-press-event", self._on_zoom_out_pressed, _map)
+        self.pack_start(self.zo, False, False)
+
+        self.zoom = gtk.Adjustment(
+                            value=_map.props.zoom,
+                            lower=_map.props.min_zoom,
+                            upper=_map.props.max_zoom,
+                            step_incr=1,
+                            page_incr=1,
+                            page_size=0)
+        self.zoom.connect("value-changed", self._on_zoom_slider_value_changed, _map)
+        hs = gtk.HScale(self.zoom)
+        hs.props.digits = 0
+        hs.props.draw_value = False
+        hs.set_size_request(100,-1)
+        hs.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
+        self.pack_start(hs, True, True)
+
+        self.zi = gtk.EventBox()
+        self.zi.add(gtk.image_new_from_stock (gtk.STOCK_ZOOM_IN, gtk.ICON_SIZE_MENU))
+        self.zi.connect("button-press-event", self._on_zoom_in_pressed, _map)
+        self.pack_start(self.zi, False, False)
+
+        _map.connect("notify::zoom", self._on_map_zoom_changed)
+
+    def _on_zoom_in_pressed(self, box, event, _map):
+        #_map.zoom_in()
+        _map.set_zoom(_map.props.zoom + 1)
+        u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
+
+    def _on_zoom_out_pressed(self, box, event, _map):
+        #_map.zoom_out()
+        if _map.props.zoom > 1:
+            _map.set_zoom(_map.props.zoom - 1)
+        u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
+
+    def _on_zoom_slider_value_changed(self, adj, _map):
+        zoom = adj.get_value()
+        if zoom != _map.props.zoom:
+            _map.set_zoom( int(zoom) )
+            u.statusbar.push(0, "Zoom factor: %d" % _map.props.zoom)
+
+    def _on_map_zoom_changed(self, _map, paramspec):
+        self.zoom.set_value(_map.props.zoom)
+
+if __name__ == "__main__":
+    u = UI()
+    u.show_all()
+    if os.name == "nt": gtk.gdk.threads_enter()
+    gtk.main()
+    if os.name == "nt": gtk.gdk.threads_leave()
+
