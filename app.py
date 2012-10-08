@@ -32,6 +32,8 @@ class App(object):
         self.bookmarks = {}
         self.last_clicked_bookmark = None
         self.modified = {}
+        self.show_untagged_only = False
+        self.show_map_coords = True
 
     def main(self):
         self.read_settings()
@@ -82,6 +84,9 @@ class App(object):
             homeloc.get_child_value(2).get_int32(),
         )
 
+        self.show_map_coords = self.settings.get_value('show-map-coords').get_boolean()
+        self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
+
     def setup_gui(self):
         self.builder = Gtk.Builder()
         self.builder.add_from_file("taggert.glade")
@@ -91,8 +96,8 @@ class App(object):
         s = self.settings.get_value('window-size')
         self.window.set_default_size(s.get_child_value(0).get_int32(), s.get_child_value(1).get_int32())
 
-        checked = self.settings.get_value('show-untagged-only').get_boolean()
-        self.builder.get_object("checkmenuitem1").set_active(checked)
+        self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
+        self.builder.get_object("checkmenuitem9").set_active(self.show_map_coords)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
 
@@ -110,6 +115,7 @@ class App(object):
             "menuitem8_activate": self.delete_bookmark,
             "combobox1_changed": self.combobox_changed,
             "checkmenuitem1_toggled": self.populate_store1,
+            "checkmenuitem9_toggled": self.toggle_overlay,
             "treeview-selection2_changed": self.treeselect_changed,
             "image4_button_press_event": self.map_zoom_out,
             "image5_button_press_event": self.map_zoom_in,
@@ -153,12 +159,14 @@ class App(object):
         self.clabel.set_color(Clutter.Color.new(255, 255, 0, 255))
 
         # The box containing the label
-        cbox = Clutter.Box()
-        cbox.set_layout_manager(Clutter.BinLayout())
-        cbox.set_color(Clutter.Color.new(0, 0, 0, 96))
-        self.osm.bin_layout_add(cbox, START, START)
-        cbox.get_layout_manager().add(self.clabel, CENTER, CENTER)
-        self.osm.connect('notify::width', lambda *ignore: cbox.set_size(self.osm.get_width(), 30))
+        self.cbox = Clutter.Box()
+        self.cbox.set_layout_manager(Clutter.BinLayout())
+        self.cbox.set_color(Clutter.Color.new(0, 0, 0, 96))
+        self.osm.bin_layout_add(self.cbox, START, START)
+        self.cbox.get_layout_manager().add(self.clabel, CENTER, CENTER)
+        self.osm.connect('notify::width', lambda *ignore: self.cbox.set_size(self.osm.get_width(), 30))
+        if not self.show_map_coords:
+            self.cbox.hide()
 
         widget.connect("realize", self.handle_map_event)
         widget.connect("button-release-event", self.handle_map_event)
@@ -215,9 +223,8 @@ class App(object):
 
     def populate_store1(self, widget=None):
 
-        menuitem = self.builder.get_object("checkmenuitem1")
-        checked = menuitem.get_active()
-        self.settings.set_value("show-untagged-only", GLib.Variant('b', checked))
+        self.show_untagged_only = self.builder.get_object("checkmenuitem1").get_active()
+        self.settings.set_value("show-untagged-only", GLib.Variant('b', self.show_untagged_only))
         self.filelist_locked = True
         shown = 0
         notshown = 0
@@ -266,7 +273,7 @@ class App(object):
                                     imglon = self.dms_to_decimal(*args3)
                                 except KeyError:
                                     imglon = ''
-                            if not checked or imglat == '' or imglon == '' or data:
+                            if not self.show_untagged_only or imglat == '' or imglon == '' or data:
                                 store.append([fl, dt, rot, str(imglat), str(imglon), modf])
                                 shown += 1
                             else:
@@ -656,8 +663,7 @@ class App(object):
         model.foreach(self.treestore_save_modified, None)
 
         # If we only want to see untagged images, repopulate the treeview
-        menuitem = self.builder.get_object("checkmenuitem1")
-        if menuitem.get_active():
+        if self.show_untagged_only:
             self.populate_store1()
         self.show_infobar("%d image%s saved" % (self.savecounter, '' if self.savecounter == 1 else 's'))
 
@@ -725,3 +731,15 @@ class App(object):
                 self.show_infobar ("Set home location to %.5f, %.5f at zoomlevel %d" % (lat, lon, zoom))
             except IndexError:
                 pass
+
+    def toggle_overlay(self, widget=None):
+        checked = self.builder.get_object("checkmenuitem9").get_active()
+        self.show_map_coords =  checked
+        self.settings.set_value("show-map-coords", GLib.Variant('b', checked))
+        #box = self.osm.get_children()[0]
+        if checked:
+            self.cbox.show()
+            #self.cbox.set_opacity(255)
+        else:
+            self.cbox.hide()
+            #self.cbox.set_opacity(0)
