@@ -40,9 +40,9 @@ class App(object):
         self.read_settings()
         self.setup_gui()
         self.init_map_sources()
-        self.init_combobox1()
         self.init_treeview1()
         self.setup_map()
+        self.init_combobox1()
         self.setup_gui_signals()
         self.populate_store1()
         self.update_adjustment1()
@@ -76,11 +76,19 @@ class App(object):
             value = val.get_child_value(1).get_double()
             self.bookmarks[key]['longitude'] = value
 
+        self.map_id = self.settings.get_value('map-source-id').get_string()
+
     def setup_gui(self):
         self.builder = Gtk.Builder()
         self.builder.add_from_file("taggert.glade")
         self.window = self.builder.get_object("window1")
-        self.window.set_default_size(1200, 768)
+
+        # Restore window size
+        s = self.settings.get_value('window-size')
+        self.window.set_default_size(s.get_child_value(0).get_int32(), s.get_child_value(1).get_int32())
+
+        checked = self.settings.get_value('show-untagged-only').get_boolean()
+        self.builder.get_object("checkmenuitem1").set_active(checked)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
 
@@ -122,6 +130,10 @@ class App(object):
 
         self.osm = widget.get_view()
 
+        # Set the map source
+        self.osm.set_map_source(self.map_sources[self.map_id])
+        self.update_adjustment1()
+
         # A marker layer
         self.markerlayer = Champlain.MarkerLayer()
         self.osm.add_layer(self.markerlayer)
@@ -156,7 +168,9 @@ class App(object):
         renderer = Gtk.CellRendererText()
         combobox.pack_start(renderer, True)
         combobox.add_attribute(renderer, "text", 1)
-        combobox.set_active(0)
+
+        self.combobox1_set_map_id(self.map_id)
+        #combobox.set_active(0)
 
     def init_treeview1(self):
         self.builder.get_object("liststore1").set_sort_column_id(0,  Gtk.SortType.ASCENDING)
@@ -190,6 +204,7 @@ class App(object):
 
     def quit(self, _window, _event=None):
         if self.save_modified_dialog():
+            self.save_settings()
             print "Exit."
             Gtk.main_quit()
 
@@ -197,7 +212,7 @@ class App(object):
 
         menuitem = self.builder.get_object("checkmenuitem1")
         checked = menuitem.get_active()
-
+        self.settings.set_value("show-untagged-only", GLib.Variant('b', checked))
         self.filelist_locked = True
         shown = 0
         notshown = 0
@@ -342,6 +357,7 @@ class App(object):
         active = combobox.get_active_iter()
         if active != None:
             self.map_id = model[active][0]
+            self.settings.set_value("map-source-id", GLib.Variant('s', self.map_id))
             self.osm.set_map_source(self.map_sources[self.map_id])
             self.update_adjustment1()
 
@@ -677,4 +693,19 @@ class App(object):
     def hide_infobar(self, widget=None):
         self.builder.get_object("infobar1").hide()
         # return False to cancel the timer
+        return False
+
+    def save_settings(self):
+        value = self.builder.get_object("window1").get_size()
+        self.settings.set_value('window-size', GLib.Variant('(ii)', value))
+
+    def combobox1_set_map_id(self, string):
+        model = self.builder.get_object("liststore3")
+        model.foreach(self.find_and_set_map_id, self.map_id)
+
+    def find_and_set_map_id(self, model, path, tree_iter, string):
+        map_id = model.get_value(tree_iter,0)
+        if map_id == string:
+            self.builder.get_object("combobox1").set_active_iter(tree_iter)
+            return True
         return False
