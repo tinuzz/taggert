@@ -78,6 +78,13 @@ class App(object):
 
         self.map_id = self.settings.get_value('map-source-id').get_string()
 
+        homeloc = self.settings.get_value('home-location')
+        self.home_location = (
+            homeloc.get_child_value(0).get_double(),
+            homeloc.get_child_value(1).get_double(),
+            homeloc.get_child_value(2).get_int32(),
+        )
+
     def setup_gui(self):
         self.builder = Gtk.Builder()
         self.builder.add_from_file("taggert.glade")
@@ -117,7 +124,8 @@ class App(object):
             "button4_clicked": self.go_to_image,
             "button5_clicked": self.add_bookmark_dialog,
             "button6_clicked": self.save_all,
-            "button14_clicked": self.hide_infobar
+            "button14_clicked": self.hide_infobar,
+            "button15_clicked": self.set_home_location
         }
         self.builder.connect_signals(handlers)
 
@@ -618,8 +626,8 @@ class App(object):
     def delete_tag_from_selected(self, widget):
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
+        i=0
         if pathlist:
-            i=0
             for p in pathlist:
                 tree_iter = model.get_iter(p)
                 lat = model.get_value(tree_iter,3)
@@ -631,7 +639,7 @@ class App(object):
                     model[tree_iter][5] = True
                     self.modified[filename] = {'latitude': '', 'longitude': ''}
                     i += 1
-            self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
+        self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
 
     def dms_to_decimal(self, degrees, minutes, seconds, sign=' '):
         return (-1 if sign[0] in 'SWsw' else 1) * (
@@ -709,3 +717,14 @@ class App(object):
             self.builder.get_object("combobox1").set_active_iter(tree_iter)
             return True
         return False
+
+    def set_home_location(self, widget=None):
+            try:
+                m = self.markerlayer.get_markers()[0]
+                lat, lon = (m.get_latitude(), m.get_longitude())
+                zoom = self.osm.get_zoom_level()
+                self.home_location = (lat, lon, zoom)
+                self.settings.set_value("home-location", GLib.Variant('(ddi)', (lat, lon, zoom)))
+                self.show_infobar ("Set home location to %.5f, %.5f at zoomlevel %d" % (lat, lon, zoom))
+            except IndexError:
+                pass
