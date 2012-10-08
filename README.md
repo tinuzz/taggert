@@ -76,9 +76,9 @@ The first incarnation of Taggert was based on osm-gps-map [2] rather than
 libchamplain and its code was based on the bundled mapviewer example [3],
 written by Hadley Rich.
 
-[1] <https://github.com/robru/gottengeography>
-[2] <http://nzjrs.github.com/osm-gps-map/>
-[3] <https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py>
+* [1] <https://github.com/robru/gottengeography>
+* [2] <http://nzjrs.github.com/osm-gps-map/>
+* [3] <https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py>
 
 
 Roadmap
@@ -97,4 +97,4 @@ and should appear in gexiv2 version 0.5.0.
 When gexiv2 v0.5.0 or greater is available for Debian, Taggert will be
 rewritten to use that, rather than pyexiv2.
 
-[4] <http://redmine.yorba.org/projects/gexiv2/wiki>
+* [4] <http://redmine.yorba.org/projects/gexiv2/wiki>
