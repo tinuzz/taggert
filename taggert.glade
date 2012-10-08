@@ -984,7 +984,7 @@
                                           <object class="GtkImage" id="image4">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="stock">gtk-delete</property>
+                                            <property name="stock">gtk-zoom-out</property>
                                             <signal name="button-press-event" handler="image4_button_press_event" swapped="no"/>
                                           </object>
                                         </child>
