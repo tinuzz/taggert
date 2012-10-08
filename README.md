@@ -8,11 +8,11 @@ Usage
 -----
 
 The idea behind Taggert is fairly simple:
-1. Select a directory containing image files that you want to geo-tag
-2. Select a location on the map by setting a marker
-3. Select one ore more images in the list
-4. Click a button to add the marker's location to the selected images
-5. Save your changes
+*  Select a directory containing image files that you want to geo-tag
+*  Select a location on the map by setting a marker
+*  Select one ore more images in the list
+*  Click a button to add the marker's location to the selected images
+* Save your changes
 
 Features
 --------
