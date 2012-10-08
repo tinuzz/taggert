@@ -22,14 +22,11 @@ END    = Clutter.BinAlignment.END
 class App(object):
 
     def __init__(self):
-        self.marker_lat = 0
-        self.marker_lon = 0
         self.imagedir   = '/home/martijn/Pictures/2012'
         self.filelist_locked = False
-        self.home_location = (51.44823, 5.47262, 17)  # lat, lon, zoom
+        self.home_location = (51.50063, -0.12456, 12)  # lat, lon, zoom
         self.clicked_lat = 0.0
         self.clicked_lon = 0.0
-        self.marker_location = (0.0, 0.0)
         self.marker_size = 18
         self.map_id = 'osm-mapnik'
         self.bookmarks = {}
