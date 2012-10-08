@@ -571,6 +571,16 @@
                         <signal name="toggled" handler="checkmenuitem1_toggled" swapped="no"/>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkCheckMenuItem" id="checkmenuitem9">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Coordinates overlay</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="checkmenuitem9_toggled" swapped="no"/>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -925,7 +935,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
-                                    <property name="halign">fill</property>
                                     <property name="valign">center</property>
                                     <property name="use_action_appearance">False</property>
                                   </object>
@@ -943,7 +952,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
-                                    <property name="halign">fill</property>
                                     <property name="valign">center</property>
                                     <property name="use_action_appearance">False</property>
                                     <signal name="clicked" handler="button4_clicked" swapped="no"/>
@@ -1030,7 +1038,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
-                                    <property name="halign">fill</property>
                                     <property name="valign">center</property>
                                     <property name="use_action_appearance">False</property>
                                     <signal name="clicked" handler="button5_clicked" swapped="no"/>
@@ -1049,7 +1056,6 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
-                                    <property name="halign">fill</property>
                                     <property name="valign">center</property>
                                     <property name="use_action_appearance">False</property>
                                     <signal name="clicked" handler="button6_clicked" swapped="no"/>
