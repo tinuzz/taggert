@@ -18,7 +18,7 @@
       <summary>Use this size for the marker on the map. </summary>
     </key>
     <key type="(ddi)" name="home-location">
-      <default>(0.0, 0.0, 0)</default>
+      <default>(51.50063, -0.12456, 12)</default>
       <summary>Use these coordinates and zoom level as home location.</summary>
     </key>
     <key type="b" name="show-map-coords">
