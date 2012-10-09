@@ -72,18 +72,26 @@ Taggert is written and maintained by Martijn Grendelman <m@rtijn.net>. It was
 inspired heavily by GottenGeography [1], written by Robert Bruce Park, and his
 code was used as a starting point on some occasions.
 
-Taggert is licensed under the Apache License, version 2.0. A copy of the
-license can be found in the 'COPYING' file and on the web [2].
+The code for parsing GPX files was taken from GPX Viewer [2], which was written
+by Andrew Gee. I modified it slightly for use with Taggert.
 
-The first incarnation of Taggert was based on osm-gps-map [3] rather than
-libchamplain and its code was based on the bundled mapviewer example [4],
-written by Hadley Rich. I am not sure whether any code written by Hadley Rich
+The bundled code for parsing ISO8601 date strings comes from the 'pyiso8601'
+module, hosted on Google Code [3].
+
+The first incarnation of Taggert was based on osm-gps-map [4] rather than
+libchamplain and its code was based on the bundled mapviewer example [5],
+written by Hadley Rich. I don't think that any code written by Hadley Rich
 is present in the current version of Taggert.
 
+Taggert is licensed under the Apache License, version 2.0. A copy of the
+license can be found in the 'COPYING' file and on the web [6].
+
 * [1] <https://github.com/robru/gottengeography>
-* [2] <http://www.apache.org/licenses/LICENSE-2.0>
-* [3] <http://nzjrs.github.com/osm-gps-map/>
-* [4] <https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py>
+* [2] <http://andrewgee.org/blog/projects/gpxviewer/>
+* [3] <http://code.google.com/p/pyiso8601/>
+* [4] <http://nzjrs.github.com/osm-gps-map/>
+* [5] <https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py>
+* [6] <http://www.apache.org/licenses/LICENSE-2.0>
 
 Roadmap
 -------
@@ -94,11 +102,11 @@ Roadmap
 * Python 3 support
 
 Robert Bruce Park, who created GottenGeography, also created GObject
-Introspection data for 'gexiv2' [5], making this GObject wrapper usable from
+Introspection data for 'gexiv2' [7], making this GObject wrapper usable from
 Python, including version 3. His work has been merged with upstream gexiv2
 and should appear in gexiv2 version 0.5.0.
 
 When gexiv2 v0.5.0 or greater is available for Debian, Taggert will be
 rewritten to use that, rather than pyexiv2.
 
-* [5] <http://redmine.yorba.org/projects/gexiv2/wiki>
+* [7] <http://redmine.yorba.org/projects/gexiv2/wiki>
