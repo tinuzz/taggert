@@ -26,6 +26,10 @@ from gi.repository import GdkPixbuf
 #from gi.repository import GObject
 from gi.repository import Gio, GLib
 from pprint import pprint
+import xml.dom.minidom as minidom
+from iso8601 import parse_date as parse_xml_date
+from gpxfile import GPXfile
+from polygon import Polygon
 
 #GObject.threads_init()
 GtkClutter.init([])
@@ -49,6 +53,9 @@ class App(object):
         self.modified = {}
         self.show_untagged_only = False
         self.show_map_coords = True
+        self.show_tracks = True
+        self.gpx = GPXfile()
+        self.last_gpx_folder = None
 
     def main(self):
         self.read_settings()
@@ -63,6 +70,7 @@ class App(object):
         self.reload_bookmarks()
         self.window.set_title('Taggert')
         self.window.show_all()
+        self.init_treeview2()
         Gtk.main()
 
     def read_settings(self):
@@ -113,6 +121,7 @@ class App(object):
 
         self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
         self.builder.get_object("checkmenuitem9").set_active(self.show_map_coords)
+        self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
 
@@ -123,6 +132,7 @@ class App(object):
             "imagemenuitem1_activate": self.go_home,
             "imagemenuitem2_activate": self.select_dir,
             "imagemenuitem3_activate": self.save_all,
+            "imagemenuitem4_activate": self.open_gpx,
             "imagemenuitem5_activate": self.quit, # File -> Quit
             "imagemenuitem9_activate": self.delete_tag_from_selected, # File -> Quit
             "menuitem6_activate": self.map_add_marker,
@@ -130,6 +140,7 @@ class App(object):
             "menuitem8_activate": self.delete_bookmark,
             "combobox1_changed": self.combobox_changed,
             "checkmenuitem1_toggled": self.populate_store1,
+            "checkmenuitem2_toggled": self.toggle_tracks,
             "checkmenuitem9_toggled": self.toggle_overlay,
             "treeview-selection2_changed": self.treeselect_changed,
             "image4_button_press_event": self.map_zoom_out,
@@ -442,6 +453,8 @@ class App(object):
     def select_dir(self, widget):
         if self.save_modified_dialog():
             chooser = self.builder.get_object ("filechooserdialog1")
+            chooser.set_title("Select image folder")
+            chooser.set_action(Gtk.FileChooserAction.SELECT_FOLDER)
 
             # If the current dir is local (i.e. it starts with a '/'),
             # make the filechooser start there
@@ -749,12 +762,88 @@ class App(object):
 
     def toggle_overlay(self, widget=None):
         checked = self.builder.get_object("checkmenuitem9").get_active()
-        self.show_map_coords =  checked
+        self.show_map_coords = checked
         self.settings.set_value("show-map-coords", GLib.Variant('b', checked))
         #box = self.osm.get_children()[0]
         if checked:
             self.cbox.show()
-            #self.cbox.set_opacity(255)
         else:
             self.cbox.hide()
-            #self.cbox.set_opacity(0)
+
+    def process_gpx(self, filename):
+        store = self.builder.get_object("liststore2")
+        #self.gpx.import_gpx('/home/martijn/tmp/20070722 tot 20070801.gpx', 7200)
+        #self.gpx.import_gpx('/home/martijn/tmp/1000_bochten_2012_dubbel_ingekort.gpx', 7200)
+        idx = self.gpx.import_gpx(filename)
+        for trk in self.gpx.gpxfiles[idx]['tracks']:
+            # Create a tracklayer for each track
+            tracklayer = Polygon()
+            t0 = trk["segments"][0]["points"][0]["time"]
+            tx = trk["segments"][-1]["points"][-1]["time"]
+            p = 0
+            for segment in trk["segments"]:
+                for point in segment["points"]:
+                    p += 1
+                    tracklayer.append_point(point["lat"], point["lon"])
+            store.append([
+                trk['name'],
+                t0.strftime("%Y-%m-%d %H:%M:%S"),
+                tx.strftime("%Y-%m-%d %H:%M:%S"),
+                p, trk["uuid"], tracklayer
+            ])
+            self.osm.add_layer(tracklayer)
+
+        # Store the directory of the file for next time
+        self.last_gpx_folder = os.path.dirname(filename)
+
+    def init_treeview2(self):
+        self.builder.get_object("liststore2").set_sort_column_id(1,  Gtk.SortType.ASCENDING)
+        renderer = Gtk.CellRendererText()
+        #renderer.set_property('cell-background', 'yellow')
+        col0 = Gtk.TreeViewColumn("Name", renderer, text=0)
+        col1 = Gtk.TreeViewColumn("Start time", renderer, text=1)
+        col2 = Gtk.TreeViewColumn("End time", renderer, text=2)
+        col3 = Gtk.TreeViewColumn("Points", renderer, text=3)
+
+        col0.set_sort_column_id(0)
+        col1.set_sort_column_id(1)
+        col2.set_sort_column_id(2)
+        col3.set_sort_column_id(3)
+
+        tree = self.builder.get_object("treeview2")
+        tree.append_column(col0)
+        tree.append_column(col1)
+        tree.append_column(col2)
+        tree.append_column(col3)
+
+    def open_gpx(self, widget=None):
+            filefilter = Gtk.FileFilter()
+            filefilter.set_name("GPX files")
+            filefilter.add_pattern('*.gpx')
+            filefilter.add_pattern('*.GPX')
+            chooser = self.builder.get_object ("filechooserdialog1")
+            chooser.set_title("Open GPX file")
+            chooser.set_action(Gtk.FileChooserAction.OPEN)
+            chooser.add_filter(filefilter)
+            if self.last_gpx_folder:
+                chooser.set_current_folder_uri('file://%s' % self.last_gpx_folder)
+            response = chooser.run()
+            chooser.hide()
+            chooser.remove_filter(filefilter)
+            if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
+                self.process_gpx(chooser.get_filename())
+
+    def toggle_tracks(self, widget=None):
+        checked = self.builder.get_object("checkmenuitem2").get_active()
+        self.show_tracks = checked
+        #pprint(self.osm.get_children())
+        model = self.builder.get_object("liststore2")
+        model.foreach(self.show_tracklayer, checked)
+
+    def show_tracklayer(self, model, path, tree_iter, show):
+        # The tracklayer object is in the 5th column
+        tracklayer = model.get_value(tree_iter,5)
+        if show:
+            tracklayer.show()
+        else:
+            tracklayer.hide()
