@@ -775,6 +775,7 @@ class App(object):
         #self.gpx.import_gpx('/home/martijn/tmp/20070722 tot 20070801.gpx', 7200)
         #self.gpx.import_gpx('/home/martijn/tmp/1000_bochten_2012_dubbel_ingekort.gpx', 7200)
         idx = self.gpx.import_gpx(filename)
+        i = 0
         for trk in self.gpx.gpxfiles[idx]['tracks']:
             # Create a tracklayer for each track
             tracklayer = Polygon()
@@ -792,7 +793,12 @@ class App(object):
                 p, trk["uuid"], tracklayer
             ])
             self.osm.add_layer(tracklayer)
+            if not self.show_tracks:
+                tracklayer.hide()
+            i += 1
 
+        self.show_infobar ("%d %stracks added from %s." % (i, 'hidden ' if not self.show_tracks else '',
+            os.path.basename(filename)))
         # Store the directory of the file for next time
         self.last_gpx_folder = os.path.dirname(filename)
 
