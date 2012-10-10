@@ -735,7 +735,7 @@
                             <child internal-child="selection">
                               <object class="GtkTreeSelection" id="treeview-selection1">
                                 <property name="mode">multiple</property>
-                                <signal name="changed" handler="treeview-selection2_changed" swapped="no"/>
+                                <signal name="changed" handler="treeview-selection1_changed" swapped="no"/>
                               </object>
                             </child>
                           </object>
@@ -765,7 +765,10 @@
                             <property name="enable_grid_lines">horizontal</property>
                             <signal name="button-press-event" handler="treeview2_button_press_event" swapped="no"/>
                             <child internal-child="selection">
-                              <object class="GtkTreeSelection" id="treeview-selection2"/>
+                              <object class="GtkTreeSelection" id="treeview-selection2">
+                                <property name="mode">multiple</property>
+                                <signal name="changed" handler="treeview-selection2_changed" swapped="no"/>
+															</object>
                             </child>
                           </object>
                         </child>
