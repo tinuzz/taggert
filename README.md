@@ -78,7 +78,7 @@ The code for parsing GPX files was taken from GPX Viewer [2], which was written
 by Andrew Gee. I modified it slightly for use with Taggert.
 
 The bundled code for parsing ISO8601 date strings comes from the 'pyiso8601'
-module, hosted on Google Code [3].
+module, hosted on Google Code [3] and is copyright (C) 2007 Michael Twomey.
 
 The first incarnation of Taggert was based on osm-gps-map [4] rather than
 libchamplain and its code was based on the bundled mapviewer example [5],
