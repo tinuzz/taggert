@@ -56,6 +56,9 @@ class App(object):
         self.show_tracks = True
         self.gpx = GPXfile()
         self.last_track_folder = None
+        self.track_highlight_color = Clutter.Color.new(0, 0, 255, 255)
+        self.track_default_color = Clutter.Color.new(255, 0, 0, 255)
+        self.last_highlighted_track = None
 
     def main(self):
         self.read_settings()
@@ -140,11 +143,14 @@ class App(object):
             "menuitem6_activate": self.map_add_marker,
             "menuitem7_activate": self.center_map_here,
             "menuitem8_activate": self.delete_bookmark,
+            "menuitem9_activate": self.view_selected_track,
+            "menuitem10_activate": self.remove_selected_track,
             "combobox1_changed": self.combobox_changed,
             "checkmenuitem1_toggled": self.populate_store1,
             "checkmenuitem2_toggled": self.toggle_tracks,
             "checkmenuitem9_toggled": self.toggle_overlay,
             "treeview-selection2_changed": self.treeselect_changed,
+            "treeview2_button_press_event": self.handle_treeview2_click,
             "image4_button_press_event": self.map_zoom_out,
             "image5_button_press_event": self.map_zoom_in,
             "eventbox1_button_press_event": self.map_zoom_out,
@@ -519,6 +525,7 @@ class App(object):
 
     def center_map_here(self, _widget):
         self.osm.center_on(self.clicked_lat, self.clicked_lon)
+        #self.osm.go_to(self.clicked_lat, self.clicked_lon)
 
     def map_zoom_in(self, widget=None, event=None):
         self.osm.zoom_in()
@@ -780,6 +787,7 @@ class App(object):
         for trk in self.gpx.gpxfiles[idx]['tracks']:
             # Create a tracklayer for each track
             tracklayer = Polygon()
+            tracklayer.set_stroke_color(self.track_default_color)
             t0 = trk["segments"][0]["points"][0]["time"]
             tx = trk["segments"][-1]["points"][-1]["time"]
             p = 0
@@ -798,7 +806,7 @@ class App(object):
                 tracklayer.hide()
             i += 1
 
-        self.show_infobar ("%d %stracks added from %s." % (i, 'hidden ' if not self.show_tracks else '',
+        self.show_infobar ("%d %stracks added from %s" % (i, 'hidden ' if not self.show_tracks else '',
             os.path.basename(filename)))
         # Store the directory of the file for next time
         self.last_track_folder = os.path.dirname(filename)
@@ -855,3 +863,41 @@ class App(object):
             tracklayer.show()
         else:
             tracklayer.hide()
+
+    def handle_treeview2_click(self, widget, event):
+        if event.button == 3: # right click
+            treeview = self.builder.get_object("treeview2")
+            selection = treeview.get_selection()
+            # If no path is found at the cursor position, get_path_at_pos returns None
+            try:
+                path,column,cx,cy = treeview.get_path_at_pos(event.x, event.y)
+            except TypeError: # NoneType
+                return True
+            if path:
+                selection.select_path(path)
+            popup = self.builder.get_object("menu8")
+            popup.popup(None, widget, None, None, event.button, event.time)
+            return True
+
+    def view_selected_track(self, widget):
+            treeview = self.builder.get_object("treeview2")
+            selection = treeview.get_selection()
+            model, tree_iter = selection.get_selected()
+            if tree_iter:
+                tracklayer = model.get_value(tree_iter, 5)
+                box = tracklayer.get_bounding_box()
+                self.osm.ensure_visible(box, True)
+                # Reset the last hightlighted track to the default color
+                if self.last_highlighted_track:
+                    self.last_highlighted_track.set_stroke_color(self.track_default_color)
+                tracklayer.set_stroke_color(self.track_highlight_color)
+                # Move the layer to the top
+                ##pprint(tracklayer.get_parent().get_parent())
+                #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
+                # raise_top() is deprecated since v1.10
+                tracklayer.raise_top()
+                self.last_highlighted_track = tracklayer
+
+    def remove_selected_track(self, widget):
+        pass
+
