@@ -17,6 +17,7 @@
 import os
 import pyexiv2
 import fractions
+import time
 from math import modf
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
 from gi.repository import Clutter
@@ -58,6 +59,7 @@ class App(object):
         self.track_highlight_color = Clutter.Color.new(0, 0, 255, 255)
         self.track_default_color = Clutter.Color.new(255, 0, 0, 255)
         self.last_highlighted_track = None
+        self.highlighted_tracks = []
 
     def main(self):
         self.read_settings()
@@ -144,6 +146,8 @@ class App(object):
             "menuitem8_activate": self.delete_bookmark,
             "menuitem9_activate": self.view_selected_track,
             "menuitem10_activate": self.remove_selected_track,
+            "menuitem11_activate": self.treeview2_select_all,
+            "menuitem12_activate": self.treeview2_select_none,
             "combobox1_changed": self.combobox_changed,
             "checkmenuitem1_toggled": self.populate_store1,
             "checkmenuitem2_toggled": self.toggle_tracks,
@@ -778,11 +782,10 @@ class App(object):
         else:
             self.cbox.hide()
 
-    def process_gpx(self, filename):
+    def process_gpx(self, filename, tz):
         store = self.builder.get_object("liststore2")
-        #self.gpx.import_gpx('/home/martijn/tmp/20070722 tot 20070801.gpx', 7200)
-        #self.gpx.import_gpx('/home/martijn/tmp/1000_bochten_2012_dubbel_ingekort.gpx', 7200)
-        idx = self.gpx.import_gpx(filename)
+        idx = self.gpx.import_gpx(filename, tz)
+        #pprint(self.gpx.gpxfiles[0]['tracks'][0]['segments'][0]['points'][0]['time'])
         i = 0
         for trk in self.gpx.gpxfiles[idx]['tracks']:
             # Create a tracklayer for each track
@@ -847,7 +850,9 @@ class App(object):
             chooser.hide()
             chooser.remove_filter(filefilter)
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-                self.process_gpx(chooser.get_filename())
+                # Open the timezone chooser here; use system timezone for now
+                tz,_dst = time.tzname
+                self.process_gpx(chooser.get_filename(), tz)
 
     def toggle_tracks(self, widget=None):
         checked = self.builder.get_object("checkmenuitem2").get_active()
@@ -902,21 +907,25 @@ class App(object):
 
     def treeselect2_changed(self, treeselect):
         if treeselect:
+            # First, reset the color of the previously selected tracks
+            for t in self.highlighted_tracks:
+                t.set_stroke_color(self.track_default_color)
+            self.highlighted_tracks = []
+
             model,pathlist = treeselect.get_selected_rows()
             if pathlist:
-                # Get the first selected track
-                p = pathlist[0]
-                tree_iter = model.get_iter(p)
-                tracklayer = model.get_value(tree_iter, 5)
-                if tracklayer == self.last_highlighted_track:
-                    return
-                # Reset the last hightlighted track to the default color
-                if self.last_highlighted_track:
-                    self.last_highlighted_track.set_stroke_color(self.track_default_color)
-                tracklayer.set_stroke_color(self.track_highlight_color)
-                # Move the layer to the top
-                ##pprint(tracklayer.get_parent().get_parent())
-                # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
-                #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
-                tracklayer.raise_top()
-                self.last_highlighted_track = tracklayer
+                for p in pathlist:
+                    tree_iter = model.get_iter(p)
+                    tracklayer = model.get_value(tree_iter, 5)
+                    tracklayer.set_stroke_color(self.track_highlight_color)
+                    # Move the layer to the top
+                    # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
+                    #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
+                    tracklayer.raise_top()
+                    self.highlighted_tracks.append(tracklayer)
+
+    def treeview2_select_all(self, widget):
+        self.builder.get_object("treeview2").get_selection().select_all()
+
+    def treeview2_select_none(self, widget):
+        self.builder.get_object("treeview2").get_selection().unselect_all()

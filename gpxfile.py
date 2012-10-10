@@ -10,18 +10,20 @@
 #from pprint import pprint
 import xml.dom.minidom as minidom
 from iso8601 import parse_date as parse_xml_date
-from datetime import timedelta
+from datetime import datetime, timedelta
 import uuid
+from pytz import timezone   # apt-get install python-tz
 
 class GPXfile(object):
 
     gpxfiles = []
-    delta = 0
+    delta = None  # a timedelta object
+    tz = None     # a pytz timezone object
 
     #def __init__(self):
 
-    def import_gpx(self, filename, delta=0):
-        self.delta = timedelta(seconds=delta)
+    def import_gpx(self, filename, tz):
+        self.tz = timezone(tz)
         doc = minidom.parse(filename)
         doce = doc.documentElement
         if doce.nodeName != "gpx":
@@ -77,7 +79,13 @@ class GPXfile(object):
             elif tpnode.nodeName == "desc":
                 point['description'] = tpnode.childNodes[0].nodeValue
             elif tpnode.nodeName == "time":
-                point['time'] = parse_xml_date(tpnode.childNodes[0].nodeValue) + self.delta
+                t0 = parse_xml_date(tpnode.childNodes[0].nodeValue)
+                if not self.delta:
+                    # Use is_dst = False; this may give incorrect results if the first
+                    # trackpoint's time ambiguous due to a DST transition
+                    # Also, strip the timezone information for calculating the delta
+                    self.delta = self.tz.utcoffset(t0.replace(tzinfo=None), False)
+                point['time'] = t0 + self.delta
             elif tpnode.nodeName == "name":
                 point['name'] = tpnode.childNodes[0].nodeValue
         return point

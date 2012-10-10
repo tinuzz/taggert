@@ -8,10 +8,10 @@ Usage
 -----
 
 The idea behind Taggert is fairly simple:
-*  Select a directory containing image files that you want to geo-tag
-*  Select a location on the map by setting a marker
-*  Select one ore more images in the list
-*  Click a button to add the marker's location to the selected images
+* Select a directory containing image files that you want to geo-tag
+* Select a location on the map by setting a marker
+* Select one ore more images in the list
+* Click a button to add the marker's location to the selected images
 * Save your changes
 
 Features
@@ -24,6 +24,7 @@ Features
 	locations that you frequently visit
 * Lets you remove tags from images, too
 * Uses GSettings to store runtime configuration options
+* Uses pytz to (hopefully) reliably calculate timezone offsets for tracks
 
 Prerequisites
 -------------
@@ -33,6 +34,7 @@ The following software is needed to run Taggert:
 * Python (developed and currently only tested with v2.7)
 * PyGObject    (Debian: python-gi)
 * pyexiv2      (Debian: python-pyexiv2, homepage: http://tilloy.net/dev/pyexiv2/)
+* pytz         (Debian: python-tz) for timezone calculations
 
 and the following PyGObject introspection libraries:
 
