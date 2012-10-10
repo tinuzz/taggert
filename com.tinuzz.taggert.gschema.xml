@@ -41,5 +41,13 @@
       <default>{"bookmark1": 2.294759, "bookmark2": 78.042895}</default>
       <summary>The longitudes of user's bookmarks</summary>
     </key>
+    <key type="s" name="last-image-dir">
+      <default>""</default>
+      <summary>The directory that was used last to look for images.</summary>
+    </key>
+    <key type="s" name="last-track-folder">
+      <default>""</default>
+      <summary>The directory a track file was last loaded from.</summary>
+    </key>
   </schema>
 </schemalist>

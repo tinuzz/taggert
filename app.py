@@ -41,7 +41,7 @@ END    = Clutter.BinAlignment.END
 class App(object):
 
     def __init__(self):
-        self.imagedir   = '/home/martijn/Pictures/2012'
+        self.imagedir   = ''
         self.filelist_locked = False
         self.home_location = (51.50063, -0.12456, 12)  # lat, lon, zoom
         self.clicked_lat = 0.0
@@ -55,7 +55,7 @@ class App(object):
         self.show_map_coords = True
         self.show_tracks = True
         self.gpx = GPXfile()
-        self.last_gpx_folder = None
+        self.last_track_folder = None
 
     def main(self):
         self.read_settings()
@@ -109,6 +109,8 @@ class App(object):
 
         self.show_map_coords = self.settings.get_value('show-map-coords').get_boolean()
         self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
+        self.imagedir = self.settings.get_value('last-image-dir').get_string()
+        self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
 
     def setup_gui(self):
         self.builder = Gtk.Builder()
@@ -456,15 +458,14 @@ class App(object):
             chooser.set_title("Select image folder")
             chooser.set_action(Gtk.FileChooserAction.SELECT_FOLDER)
 
-            # If the current dir is local (i.e. it starts with a '/'),
-            # make the filechooser start there
-            if self.imagedir[0] == '/':
+            if self.imagedir and os.path.isdir(self.imagedir):
                 chooser.set_current_folder_uri('file://%s' % self.imagedir)
 
             response = chooser.run()
             chooser.hide()
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
                 self.imagedir = chooser.get_filename()
+                self.settings.set_value("last-image-dir", GLib.Variant('s', self.imagedir))
                 self.modified = {}
                 self.populate_store1 ()
 
@@ -800,7 +801,8 @@ class App(object):
         self.show_infobar ("%d %stracks added from %s." % (i, 'hidden ' if not self.show_tracks else '',
             os.path.basename(filename)))
         # Store the directory of the file for next time
-        self.last_gpx_folder = os.path.dirname(filename)
+        self.last_track_folder = os.path.dirname(filename)
+        self.settings.set_value("last-track-folder", GLib.Variant('s', self.last_track_folder))
 
     def init_treeview2(self):
         self.builder.get_object("liststore2").set_sort_column_id(1,  Gtk.SortType.ASCENDING)
@@ -831,8 +833,8 @@ class App(object):
             chooser.set_title("Open GPX file")
             chooser.set_action(Gtk.FileChooserAction.OPEN)
             chooser.add_filter(filefilter)
-            if self.last_gpx_folder:
-                chooser.set_current_folder_uri('file://%s' % self.last_gpx_folder)
+            if self.last_track_folder and os.path.isdir(self.last_track_folder):
+                chooser.set_current_folder_uri('file://%s' % self.last_track_folder)
             response = chooser.run()
             chooser.hide()
             chooser.remove_filter(filefilter)
