@@ -23,7 +23,6 @@ from gi.repository import Clutter
 from gi.repository import Gtk, GtkChamplain
 from gi.repository import Champlain
 from gi.repository import GdkPixbuf
-#from gi.repository import GObject
 from gi.repository import Gio, GLib
 from pprint import pprint
 import xml.dom.minidom as minidom
@@ -149,7 +148,8 @@ class App(object):
             "checkmenuitem1_toggled": self.populate_store1,
             "checkmenuitem2_toggled": self.toggle_tracks,
             "checkmenuitem9_toggled": self.toggle_overlay,
-            "treeview-selection2_changed": self.treeselect_changed,
+            "treeview-selection1_changed": self.treeselect_changed,
+            "treeview-selection2_changed": self.treeselect2_changed,
             "treeview2_button_press_event": self.handle_treeview2_click,
             "image4_button_press_event": self.map_zoom_out,
             "image5_button_press_event": self.map_zoom_in,
@@ -866,38 +866,57 @@ class App(object):
 
     def handle_treeview2_click(self, widget, event):
         if event.button == 3: # right click
-            treeview = self.builder.get_object("treeview2")
-            selection = treeview.get_selection()
+            #treeview = self.builder.get_object("treeview2")
+            #selection = treeview.get_selection()
             # If no path is found at the cursor position, get_path_at_pos returns None
-            try:
-                path,column,cx,cy = treeview.get_path_at_pos(event.x, event.y)
-            except TypeError: # NoneType
-                return True
-            if path:
-                selection.select_path(path)
+            #try:
+            #    path,column,cx,cy = treeview.get_path_at_pos(event.x, event.y)
+            #except TypeError: # NoneType
+            #    return True
+            #if path:
+            #    selection.unselect_all()
+            #    selection.select_path(path)
             popup = self.builder.get_object("menu8")
             popup.popup(None, widget, None, None, event.button, event.time)
             return True
 
     def view_selected_track(self, widget):
-            treeview = self.builder.get_object("treeview2")
-            selection = treeview.get_selection()
-            model, tree_iter = selection.get_selected()
-            if tree_iter:
+        treeselect = self.builder.get_object("treeview2").get_selection()
+        model, pathlist = treeselect.get_selected_rows()
+        i = 0
+        box = None
+        if pathlist:
+            for p in pathlist:
+                tree_iter = model.get_iter(p)
                 tracklayer = model.get_value(tree_iter, 5)
-                box = tracklayer.get_bounding_box()
-                self.osm.ensure_visible(box, True)
+                if box:
+                    box.compose(tracklayer.get_bounding_box())
+                else:
+                    box = tracklayer.get_bounding_box()
+                i += 1
+            self.osm.ensure_visible(box, False)
+            self.show_infobar ("Showing %d tracks" % i)
+
+    def remove_selected_track(self, widget):
+        pass
+
+    def treeselect2_changed(self, treeselect):
+        if treeselect:
+            model,pathlist = treeselect.get_selected_rows()
+            if pathlist:
+                # Get the first selected track
+                p = pathlist[0]
+                tree_iter = model.get_iter(p)
+                tracklayer = model.get_value(tree_iter, 5)
+                if tracklayer == self.last_highlighted_track:
+                    return
                 # Reset the last hightlighted track to the default color
                 if self.last_highlighted_track:
                     self.last_highlighted_track.set_stroke_color(self.track_default_color)
                 tracklayer.set_stroke_color(self.track_highlight_color)
                 # Move the layer to the top
                 ##pprint(tracklayer.get_parent().get_parent())
+                # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
                 #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
-                # raise_top() is deprecated since v1.10
                 tracklayer.raise_top()
                 self.last_highlighted_track = tracklayer
-
-    def remove_selected_track(self, widget):
-        pass
-
