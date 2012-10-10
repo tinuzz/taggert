@@ -18,6 +18,7 @@ import os
 import pyexiv2
 import fractions
 import time
+import pytz
 from math import modf
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
 from gi.repository import Clutter
@@ -68,6 +69,8 @@ class App(object):
         self.init_treeview1()
         self.setup_map()
         self.init_combobox1()
+        self.init_timezonepre()
+        self.init_combobox2and3()
         self.setup_gui_signals()
         self.populate_store1()
         self.update_adjustment1()
@@ -149,6 +152,7 @@ class App(object):
             "menuitem11_activate": self.treeview2_select_all,
             "menuitem12_activate": self.treeview2_select_none,
             "combobox1_changed": self.combobox_changed,
+            "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
             "checkmenuitem2_toggled": self.toggle_tracks,
             "checkmenuitem9_toggled": self.toggle_overlay,
@@ -851,8 +855,15 @@ class App(object):
             chooser.remove_filter(filefilter)
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
                 # Open the timezone chooser here; use system timezone for now
-                tz,_dst = time.tzname
-                self.process_gpx(chooser.get_filename(), tz)
+                filename = chooser.get_filename()
+                self.builder.get_object("label11").set_text(os.path.basename(filename))
+                dialog = self.builder.get_object ("dialog2")
+                resp2 = dialog.run()
+                dialog.hide()
+                tz = self.get_timezonedialog_result()
+                #tz,_dst = time.tzname
+                print tz
+                self.process_gpx(filename, tz)
 
     def toggle_tracks(self, widget=None):
         checked = self.builder.get_object("checkmenuitem2").get_active()
@@ -929,3 +940,63 @@ class App(object):
 
     def treeview2_select_none(self, widget):
         self.builder.get_object("treeview2").get_selection().unselect_all()
+
+    def init_timezonepre(self):
+        store = self.builder.get_object("liststore4")
+
+        zones = {}
+        for tz in pytz.common_timezones:
+            if tz.find('/') >= 0:
+                a,b = tz.split('/', 1)
+            else:
+                a = tz
+                b = ''
+            if not zones.has_key(a):
+                zones[a] = []
+                store.append([a])
+            #zones[a].append(b)
+
+    def init_combobox2and3(self):
+        combobox = self.builder.get_object("combobox2")
+        renderer = Gtk.CellRendererText()
+        combobox.pack_start(renderer, True)
+        combobox.add_attribute(renderer, "text", 0)
+        combobox.set_active(0)
+        self.combobox2_changed(combobox)
+
+        combobox = self.builder.get_object("combobox3")
+        renderer = Gtk.CellRendererText()
+        combobox.pack_start(renderer, True)
+        combobox.add_attribute(renderer, "text", 0)
+
+
+    def combobox2_changed(self, combobox):
+        model = combobox.get_model()
+        active = combobox.get_active_iter()
+        if active != None:
+            tzpre = model[active][0]
+            store = self.builder.get_object("liststore5")
+            store.clear()
+            for tz in pytz.common_timezones:
+                if tz.find('/') >= 0:
+                    a,b = tz.split('/', 1)
+                else:
+                    a = tz
+                    b = ''
+                if a == tzpre:
+                    store.append([b])
+        self.builder.get_object("combobox3").set_active(0)
+
+    def get_timezonedialog_result(self):
+        model1  = self.builder.get_object("liststore4")
+        model2  = self.builder.get_object("liststore5")
+
+        iter1 = self.builder.get_object("combobox2").get_active_iter()
+        iter2 = self.builder.get_object("combobox3").get_active_iter()
+
+        if iter1 and iter2:
+            pre = model1.get_value(iter1,0)
+            post = model2.get_value(iter2,0)
+
+        #print "%s/%s" % (pre, post)
+        return "%s%s" % (pre, '/' + post if post else '')
