@@ -61,6 +61,8 @@ class App(object):
         self.track_default_color = Clutter.Color.new(255, 0, 0, 255)
         self.last_highlighted_track = None
         self.highlighted_tracks = []
+        self.track_timezone = 'Europe/Amsterdam'
+        self.always_this_timezone = False
 
     def main(self):
         self.read_settings()
@@ -69,8 +71,8 @@ class App(object):
         self.init_treeview1()
         self.setup_map()
         self.init_combobox1()
-        self.init_timezonepre()
-        self.init_combobox2and3()
+        idx = self.init_timezonepre()
+        self.init_combobox2and3(idx)
         self.setup_gui_signals()
         self.populate_store1()
         self.update_adjustment1()
@@ -118,6 +120,8 @@ class App(object):
         self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
         self.imagedir = self.settings.get_value('last-image-dir').get_string()
         self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
+        self.track_timezone = self.settings.get_value('track-timezone').get_string()
+        self.always_this_timezone = self.settings.get_value('always-this-timezone').get_boolean()
 
     def setup_gui(self):
         self.builder = Gtk.Builder()
@@ -131,6 +135,7 @@ class App(object):
         self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
         self.builder.get_object("checkmenuitem9").set_active(self.show_map_coords)
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
+        self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
 
@@ -151,6 +156,7 @@ class App(object):
             "menuitem10_activate": self.remove_selected_track,
             "menuitem11_activate": self.treeview2_select_all,
             "menuitem12_activate": self.treeview2_select_none,
+            "menuitem14_activate": self.set_timezone_dialog,
             "combobox1_changed": self.combobox_changed,
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
@@ -854,15 +860,18 @@ class App(object):
             chooser.hide()
             chooser.remove_filter(filefilter)
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-                # Open the timezone chooser here; use system timezone for now
                 filename = chooser.get_filename()
-                dialog = self.builder.get_object ("dialog2")
-                resp2 = dialog.run()
-                dialog.hide()
-                tz = self.get_timezonedialog_result()
-                #tz,_dst = time.tzname
-                print tz
-                self.process_gpx(filename, tz)
+                if not self.always_this_timezone:
+                    self.set_timezone_dialog()
+                self.process_gpx(filename, self.track_timezone)
+
+    def set_timezone_dialog(self, widget=None):
+        dialog = self.builder.get_object ("dialog2")
+        resp2 = dialog.run()
+        dialog.hide()
+        self.track_timezone, self.always_this_timezone = self.get_timezonedialog_result()
+        self.settings.set_value("track-timezone", GLib.Variant('s', self.track_timezone))
+        self.settings.set_value("always-this-timezone", GLib.Variant('b', self.always_this_timezone))
 
     def toggle_tracks(self, widget=None):
         checked = self.builder.get_object("checkmenuitem2").get_active()
@@ -942,25 +951,29 @@ class App(object):
 
     def init_timezonepre(self):
         store = self.builder.get_object("liststore4")
+        cur_a, _ignore = self.timezone_split(self.track_timezone)
 
         zones = {}
+        i = 0
+        cur_idx = 0
         for tz in pytz.common_timezones:
-            if tz.find('/') >= 0:
-                a,b = tz.split('/', 1)
-            else:
-                a = tz
-                b = ''
+            a,b =  self.timezone_split(tz)
             if not zones.has_key(a):
                 zones[a] = []
                 store.append([a])
-            #zones[a].append(b)
+                if a == cur_a:
+                    cur_idx = i
+                i += 1
+        # Return the index in the liststore of the current timezone
+        # so combobox2 can be set to that entry
+        return cur_idx
 
-    def init_combobox2and3(self):
+    def init_combobox2and3(self, idx=0):
         combobox = self.builder.get_object("combobox2")
         renderer = Gtk.CellRendererText()
         combobox.pack_start(renderer, True)
         combobox.add_attribute(renderer, "text", 0)
-        combobox.set_active(0)
+        combobox.set_active(idx)
         self.combobox2_changed(combobox)
 
         combobox = self.builder.get_object("combobox3")
@@ -968,23 +981,24 @@ class App(object):
         combobox.pack_start(renderer, True)
         combobox.add_attribute(renderer, "text", 0)
 
-
     def combobox2_changed(self, combobox):
         model = combobox.get_model()
         active = combobox.get_active_iter()
+        _ignore, cur_b = self.timezone_split(self.track_timezone)
+        i = 0
+        cur_idx = 0
         if active != None:
             tzpre = model[active][0]
             store = self.builder.get_object("liststore5")
             store.clear()
             for tz in pytz.common_timezones:
-                if tz.find('/') >= 0:
-                    a,b = tz.split('/', 1)
-                else:
-                    a = tz
-                    b = ''
+                a,b = self.timezone_split(tz)
                 if a == tzpre:
                     store.append([b])
-        self.builder.get_object("combobox3").set_active(0)
+                    if b == cur_b:
+                        cur_idx = i
+                    i += 1
+        self.builder.get_object("combobox3").set_active(cur_idx)
 
     def get_timezonedialog_result(self):
         model1  = self.builder.get_object("liststore4")
@@ -997,5 +1011,18 @@ class App(object):
             pre = model1.get_value(iter1,0)
             post = model2.get_value(iter2,0)
 
+        always = self.builder.get_object("checkbutton1").get_active()
+
         #print "%s/%s" % (pre, post)
-        return "%s%s" % (pre, '/' + post if post else '')
+        return ("%s%s" % (pre, '/' + post if post else ''), always)
+
+    def timezone_split(self, tz):
+        # return a 2-tuple containing the timezone in two parts
+        # 'Europe/Amsterdam' => ('Europe', 'Amsterdam')
+        # 'UTC'              => ('UTC', '')
+        if tz.find('/') >= 0:
+            a,b = tz.split('/', 1)
+        else:
+            a = tz
+            b = ''
+        return (a,b)
