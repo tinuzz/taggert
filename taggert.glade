@@ -237,7 +237,7 @@
                 <property name="xalign">0</property>
                 <property name="label" translatable="yes">&lt;b&gt;Select timezone&lt;/b&gt;
 
-Select the timezone in which your track files are
+Select the timezone in which your tracks are
 recorded, to adjust the timestamps to local time
 </property>
                 <property name="use_markup">True</property>
@@ -699,6 +699,24 @@ Unchecked means 'ask every time'</property>
                     </child>
                     <child>
                       <object class="GtkSeparatorMenuItem" id="separatormenuitem1">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="menuitem14">
+                        <property name="label">gtk-preferences</property>
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="use_underline">True</property>
+                        <property name="use_stock">True</property>
+                        <signal name="activate" handler="menuitem14_activate" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparatorMenuItem" id="menuitem13">
                         <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
