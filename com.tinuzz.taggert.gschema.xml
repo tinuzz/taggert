@@ -49,5 +49,13 @@
       <default>""</default>
       <summary>The directory a track file was last loaded from.</summary>
     </key>
+    <key type="s" name="track-timezone">
+      <default>"Europe/Amsterdam"</default>
+      <summary>The timezone used to import track file.</summary>
+    </key>
+    <key type="b" name="always-this-timezone">
+      <default>false</default>
+      <summary>Wether to always use the same timezone for importing track files.</summary>
+    </key>
   </schema>
 </schemalist>
