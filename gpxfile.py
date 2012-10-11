@@ -13,6 +13,7 @@ from iso8601 import parse_date as parse_xml_date
 from datetime import datetime, timedelta
 import uuid
 from pytz import timezone   # apt-get install python-tz
+import os.path
 
 class GPXfile(object):
 
@@ -39,7 +40,10 @@ class GPXfile(object):
             if node.nodeName == "metadata":
                 trace['metadata'] = self.fetch_metadata(node)
             if node.nodeName == "trk":
-                trace['tracks'].append(self.fetch_track(node))
+                track = self.fetch_track(node)
+                if not track["name"]:
+                    track["name"] =  "%s [%d]" % (os.path.basename(filename), len(trace['tracks']) +1 )
+                trace['tracks'].append(track)
         self.gpxfiles.append(trace)
 
         # return the index of the just-added file, so the app can process it
