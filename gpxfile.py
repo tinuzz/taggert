@@ -24,6 +24,7 @@ class GPXfile(object):
 
     def import_gpx(self, filename, tz):
         self.tz = timezone(tz)
+        self.delta = None
         doc = minidom.parse(filename)
         doce = doc.documentElement
         if doce.nodeName != "gpx":
