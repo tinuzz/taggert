@@ -856,7 +856,6 @@ class App(object):
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
                 # Open the timezone chooser here; use system timezone for now
                 filename = chooser.get_filename()
-                self.builder.get_object("label11").set_text(os.path.basename(filename))
                 dialog = self.builder.get_object ("dialog2")
                 resp2 = dialog.run()
                 dialog.hide()
