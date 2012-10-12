@@ -157,6 +157,9 @@ class App(object):
             "menuitem11_activate": self.treeview2_select_all,
             "menuitem12_activate": self.treeview2_select_none,
             "menuitem14_activate": self.set_timezone_dialog,
+            "menuitem15_activate": self.images_select_all_from_camera,
+            "menuitem16_activate": self.images_select_all,
+            "menuitem17_activate": self.images_select_none,
             "combobox1_changed": self.combobox_changed,
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
@@ -164,6 +167,7 @@ class App(object):
             "checkmenuitem9_toggled": self.toggle_overlay,
             "treeview-selection1_changed": self.treeselect_changed,
             "treeview-selection2_changed": self.treeselect2_changed,
+            "treeview1_button_press_event": self.handle_treeview1_click,
             "treeview2_button_press_event": self.handle_treeview2_click,
             "image4_button_press_event": self.map_zoom_out,
             "image5_button_press_event": self.map_zoom_in,
@@ -899,6 +903,12 @@ class App(object):
         else:
             tracklayer.hide()
 
+    def handle_treeview1_click(self, widget, event):
+        if event.button == 3: # right click
+            popup = self.builder.get_object("menu9")
+            popup.popup(None, widget, None, None, event.button, event.time)
+            return True
+
     def handle_treeview2_click(self, widget, event):
         if event.button == 3: # right click
             #treeview = self.builder.get_object("treeview2")
@@ -1037,3 +1047,12 @@ class App(object):
             a = tz
             b = ''
         return (a,b)
+
+    def images_select_all_from_camera(self, widget=None):
+        return
+
+    def images_select_all(self, widget=None):
+        self.builder.get_object("treeview1").get_selection().select_all()
+
+    def images_select_none(self, widget=None):
+        self.builder.get_object("treeview1").get_selection().unselect_all()
