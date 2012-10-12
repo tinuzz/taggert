@@ -290,14 +290,25 @@ class App(object):
                             modf = False
                             metadata = pyexiv2.ImageMetadata(fname)
                             metadata.read()
+                            # Get the camera make/model
+                            try:
+                                make = metadata['Exif.Image.Make'].value
+                                model = metadata['Exif.Image.Model'].value
+                                # Remove the 'make' from the 'model' if present
+                                camera = "%s %s" % (make, model.replace(make, '',1).strip())
+                            except KeyError:
+                                camera = ''
+                            # Get EXIF DateTime
                             try:
                                 dt = metadata['Exif.Image.DateTime'].raw_value
                             except KeyError:
                                 dt = ''
+                            # Get image orientation
                             try:
                                 rot =  metadata['Exif.Image.Orientation'].raw_value
                             except KeyError:
                                 rot = '1'
+                            # Get GPS info
                             try:
                                 data =  self.modified[fl]
                                 imglat = data['latitude']
@@ -322,7 +333,7 @@ class App(object):
                                 except KeyError:
                                     imglon = ''
                             if not self.show_untagged_only or imglat == '' or imglon == '' or data:
-                                store.append([fl, dt, rot, str(imglat), str(imglon), modf])
+                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera])
                                 shown += 1
                             else:
                                 notshown += 1

@@ -435,6 +435,8 @@ Unchecked means 'ask every time'</property>
       <column type="gchararray"/>
       <!-- column-name modified -->
       <column type="gboolean"/>
+      <!-- column-name camera -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkListStore" id="liststore2">
