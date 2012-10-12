@@ -176,6 +176,7 @@ class App(object):
             "adjustment1_value_changed": self.adjust_zoom,
             "button1_clicked": self.tag_selected_from_marker,
             "button2_clicked": self.go_to_marker,
+            "button3_clicked": self.tag_selected_from_track,
             "button4_clicked": self.go_to_image,
             "button5_clicked": self.add_bookmark_dialog,
             "button6_clicked": self.save_all,
@@ -304,8 +305,11 @@ class App(object):
                                 camera = ''
                             # Get EXIF DateTime
                             try:
-                                dt = metadata['Exif.Image.DateTime'].raw_value
+                                dtobj = metadata['Exif.Image.DateTime'].value
+                                #dt = metadata['Exif.Image.DateTime'].raw_value
+                                dt = dtobj.strftime("%Y-%m-%d %H:%M:%S")
                             except KeyError:
+                                dtobj = None
                                 dt = ''
                             # Get image orientation
                             try:
@@ -337,7 +341,7 @@ class App(object):
                                 except KeyError:
                                     imglon = ''
                             if not self.show_untagged_only or imglat == '' or imglon == '' or data:
-                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera])
+                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj])
                                 shown += 1
                             else:
                                 notshown += 1
@@ -691,6 +695,35 @@ class App(object):
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
                 pass
+
+    def tag_selected_from_track(self, widget):
+        if not len(self.gpx.gpxfiles):
+            return
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if pathlist:
+            try:
+                i=0
+                for p in pathlist:
+                    tree_iter = model.get_iter(p)
+                    filename = model[tree_iter][0]
+                    dt = model[tree_iter][7]
+                    if dt:
+                        print dt.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        pprint(dt)
+                    #lat, lon = self.gpx.find_coordinates(dt)
+                    #if lat and lon:
+                        # Modify the coordinates
+                        #model[tree_iter][3] = "%.5f" % lat
+                        #model[tree_iter][4] = "%.5f" % lon
+                        #model[tree_iter][5] = True
+                        #self.modified[filename] = {'latitude': lat, 'longitude': lon}
+                        #i += 1
+                self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
+            except IndexError:
+                pass
+
 
     def delete_tag_from_selected(self, widget):
         treeselect = self.builder.get_object("treeview1").get_selection()
