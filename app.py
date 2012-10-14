@@ -59,6 +59,7 @@ class App(object):
         self.last_track_folder = None
         self.track_highlight_color = Clutter.Color.new(0, 0, 255, 255)
         self.track_default_color = Clutter.Color.new(255, 0, 0, 255)
+        self.marker_color = Clutter.Color.new(201, 0, 221, 255)
         self.last_highlighted_track = None
         self.highlighted_tracks = []
         self.track_timezone = 'Europe/Amsterdam'
@@ -156,10 +157,15 @@ class App(object):
             "menuitem10_activate": self.remove_selected_track,
             "menuitem11_activate": self.treeview2_select_all,
             "menuitem12_activate": self.treeview2_select_none,
-            "menuitem14_activate": self.set_timezone_dialog,
+            "menuitem22_activate": self.set_timezone_dialog,
             "menuitem15_activate": self.images_select_all_from_camera,
             "menuitem16_activate": self.images_select_all,
             "menuitem17_activate": self.images_select_none,
+            "menuitem18_activate": self.tag_selected_from_marker,
+            "menuitem19_activate": self.tag_selected_from_track,
+            "menuitem21_activate": self.go_to_image,
+            "menuitem22_activate": self.set_timezone_dialog,
+            "menuitem23_activate": self.settings_dialog,
             "combobox1_changed": self.combobox_changed,
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
@@ -273,6 +279,8 @@ class App(object):
             self.save_settings()
             print "Exit."
             Gtk.main_quit()
+        else:
+            return False
 
     def populate_store1(self, widget=None):
 
@@ -548,7 +556,7 @@ class App(object):
         self.markerlayer.remove_all()
         point = Champlain.Point()
         point.set_location(lat, lon)
-        point.set_color(Clutter.Color.new(255, 0, 0, 255))
+        point.set_color(self.marker_color)
         point.set_size(self.marker_size)
         point.set_draggable(True)
         self.markerlayer.add_marker(point)
@@ -697,7 +705,9 @@ class App(object):
                 pass
 
     def tag_selected_from_track(self, widget):
+        # Any tracks available?
         if not len(self.gpx.gpxfiles):
+            self.show_infobar ("No tracks loaded, cannot tag images")
             return
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
@@ -709,21 +719,18 @@ class App(object):
                     filename = model[tree_iter][0]
                     dt = model[tree_iter][7]
                     if dt:
-                        print dt.strftime("%Y-%m-%d %H:%M:%S")
-                    else:
-                        pprint(dt)
-                    #lat, lon = self.gpx.find_coordinates(dt)
-                    #if lat and lon:
-                        # Modify the coordinates
-                        #model[tree_iter][3] = "%.5f" % lat
-                        #model[tree_iter][4] = "%.5f" % lon
-                        #model[tree_iter][5] = True
-                        #self.modified[filename] = {'latitude': lat, 'longitude': lon}
-                        #i += 1
+                        lat, lon, ele = self.gpx.find_coordinates(dt)
+                        if lat and lon:
+                            #print "%s %.5f %.5f" % (filename, lat, lon)
+                            # Modify the coordinates
+                            model[tree_iter][3] = "%.5f" % lat
+                            model[tree_iter][4] = "%.5f" % lon
+                            model[tree_iter][5] = True
+                            self.modified[filename] = {'latitude': lat, 'longitude': lon}
+                            i += 1
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
                 pass
-
 
     def delete_tag_from_selected(self, widget):
         treeselect = self.builder.get_object("treeview1").get_selection()
@@ -867,11 +874,11 @@ class App(object):
                 tracklayer.hide()
             i += 1
 
-        self.show_infobar ("%d %stracks added from %s" % (i, 'hidden ' if not self.show_tracks else '',
-            os.path.basename(filename)))
+        self.markerlayer.raise_top()
         # Store the directory of the file for next time
         self.last_track_folder = os.path.dirname(filename)
         self.settings.set_value("last-track-folder", GLib.Variant('s', self.last_track_folder))
+        return i
 
     def init_treeview2(self):
         self.builder.get_object("liststore2").set_sort_column_id(1,  Gtk.SortType.ASCENDING)
@@ -900,6 +907,7 @@ class App(object):
             filefilter.add_pattern('*.GPX')
             chooser = self.builder.get_object ("filechooserdialog1")
             chooser.set_title("Open GPX file")
+            chooser.set_select_multiple(True)
             chooser.set_action(Gtk.FileChooserAction.OPEN)
             chooser.add_filter(filefilter)
             if self.last_track_folder and os.path.isdir(self.last_track_folder):
@@ -908,10 +916,19 @@ class App(object):
             chooser.hide()
             chooser.remove_filter(filefilter)
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-                filename = chooser.get_filename()
+                filenames = chooser.get_filenames()
                 if not self.always_this_timezone:
                     self.set_timezone_dialog()
-                self.process_gpx(filename, self.track_timezone)
+                i = 0
+                for filename in filenames:
+                    # self.process_gpx returns the number of tracks
+                    i += self.process_gpx(filename, self.track_timezone)
+            chooser.set_select_multiple(False)
+            if (len(filenames) == 1):
+                msg = os.path.basename(filename)
+            else:
+                msg = "%d files" % len(filenames)
+            self.show_infobar ("%d %stracks added from %s" % (i, 'hidden ' if not self.show_tracks else '', msg))
 
     def set_timezone_dialog(self, widget=None):
         dialog = self.builder.get_object ("dialog2")
@@ -976,7 +993,18 @@ class App(object):
             self.show_infobar ("Showing %d tracks" % i)
 
     def remove_selected_track(self, widget):
-        pass
+        treeselect = self.builder.get_object("treeview2").get_selection()
+        model, pathlist = treeselect.get_selected_rows()
+        if pathlist:
+            pathlist.reverse()
+            for p in pathlist:
+                tree_iter = model.get_iter(p)
+                tracklayer = model.get_value(tree_iter, 5)
+                tracklayer.destroy()
+                model.remove(tree_iter)
+                # TODO: remove track entry from self.gpx.gpxfiles[idx]['tracks']
+                #       problem: how to do this without iterating?
+            self.show_infobar("%d tracks removed" % len(pathlist))
 
     def treeselect2_changed(self, treeselect):
         if treeselect:
@@ -996,6 +1024,7 @@ class App(object):
                     #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
                     tracklayer.raise_top()
                     self.highlighted_tracks.append(tracklayer)
+        self.markerlayer.raise_top()
 
     def treeview2_select_all(self, widget):
         self.builder.get_object("treeview2").get_selection().select_all()
@@ -1089,3 +1118,6 @@ class App(object):
 
     def images_select_none(self, widget=None):
         self.builder.get_object("treeview1").get_selection().unselect_all()
+
+    def settings_dialog(self, widget=None):
+        return
