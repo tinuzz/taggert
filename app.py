@@ -26,6 +26,7 @@ from gi.repository import Gtk, GtkChamplain
 from gi.repository import Champlain
 from gi.repository import GdkPixbuf
 from gi.repository import Gio, GLib
+from gi.repository import Gdk
 from pprint import pprint
 import xml.dom.minidom as minidom
 from iso8601 import parse_date as parse_xml_date
@@ -57,9 +58,9 @@ class App(object):
         self.show_tracks = True
         self.gpx = GPXfile()
         self.last_track_folder = None
-        self.track_highlight_color = Clutter.Color.new(0, 0, 255, 255)
-        self.track_default_color = Clutter.Color.new(255, 0, 0, 255)
-        self.marker_color = Clutter.Color.new(201, 0, 221, 255)
+        self.track_highlight_color = Gdk.Color(0,0,65535)
+        self.track_default_color = Gdk.Color(65535,0,0)
+        self.marker_color = Gdk.Color(0,65535,0)
         self.last_highlighted_track = None
         self.highlighted_tracks = []
         self.track_timezone = 'Europe/Amsterdam'
@@ -124,6 +125,26 @@ class App(object):
         self.track_timezone = self.settings.get_value('track-timezone').get_string()
         self.always_this_timezone = self.settings.get_value('always-this-timezone').get_boolean()
 
+        # Colors
+        self.marker_color = self.get_color_from_settings('marker-color')
+        self.track_default_color = self.get_color_from_settings('normal-track-color')
+        self.track_highlight_color = self.get_color_from_settings('selected-track-color')
+
+    def get_color_from_settings(self, key):
+        color = self.settings.get_value(key)
+        return Gdk.Color(
+            color.get_child_value(0).get_int32(),
+            color.get_child_value(1).get_int32(),
+            color.get_child_value(2).get_int32()
+        )
+
+    def clutter_color (self, gdkcolor):
+        return Clutter.Color.new(
+            *[x / 256 for x in [gdkcolor.red, gdkcolor.green, gdkcolor.blue, 65535]])
+
+    def color_tuple (self, gdkcolor):
+        return (gdkcolor.red, gdkcolor.green, gdkcolor.blue)
+
     def setup_gui(self):
         self.builder = Gtk.Builder()
         self.builder.add_from_file("taggert.glade")
@@ -139,6 +160,9 @@ class App(object):
         self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
+        self.builder.get_object("colorbutton1").set_color(self.marker_color)
+        self.builder.get_object("colorbutton2").set_color(self.track_default_color)
+        self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
 
     def setup_gui_signals(self):
 
@@ -556,7 +580,7 @@ class App(object):
         self.markerlayer.remove_all()
         point = Champlain.Point()
         point.set_location(lat, lon)
-        point.set_color(self.marker_color)
+        point.set_color(self.clutter_color(self.marker_color))
         point.set_size(self.marker_size)
         point.set_draggable(True)
         self.markerlayer.add_marker(point)
@@ -850,12 +874,11 @@ class App(object):
     def process_gpx(self, filename, tz):
         store = self.builder.get_object("liststore2")
         idx = self.gpx.import_gpx(filename, tz)
-        #pprint(self.gpx.gpxfiles[0]['tracks'][0]['segments'][0]['points'][0]['time'])
         i = 0
         for trk in self.gpx.gpxfiles[idx]['tracks']:
             # Create a tracklayer for each track
             tracklayer = Polygon()
-            tracklayer.set_stroke_color(self.track_default_color)
+            tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
             t0 = trk["segments"][0]["points"][0]["time"]
             tx = trk["segments"][-1]["points"][-1]["time"]
             p = 0
@@ -923,12 +946,12 @@ class App(object):
                 for filename in filenames:
                     # self.process_gpx returns the number of tracks
                     i += self.process_gpx(filename, self.track_timezone)
+                if (len(filenames) == 1):
+                    msg = os.path.basename(filename)
+                else:
+                    msg = "%d files" % len(filenames)
+                self.show_infobar ("%d %stracks added from %s" % (i, 'hidden ' if not self.show_tracks else '', msg))
             chooser.set_select_multiple(False)
-            if (len(filenames) == 1):
-                msg = os.path.basename(filename)
-            else:
-                msg = "%d files" % len(filenames)
-            self.show_infobar ("%d %stracks added from %s" % (i, 'hidden ' if not self.show_tracks else '', msg))
 
     def set_timezone_dialog(self, widget=None):
         dialog = self.builder.get_object ("dialog2")
@@ -941,7 +964,6 @@ class App(object):
     def toggle_tracks(self, widget=None):
         checked = self.builder.get_object("checkmenuitem2").get_active()
         self.show_tracks = checked
-        #pprint(self.osm.get_children())
         model = self.builder.get_object("liststore2")
         model.foreach(self.show_tracklayer, checked)
 
@@ -1010,7 +1032,7 @@ class App(object):
         if treeselect:
             # First, reset the color of the previously selected tracks
             for t in self.highlighted_tracks:
-                t.set_stroke_color(self.track_default_color)
+                t.set_stroke_color(self.clutter_color(self.track_default_color))
             self.highlighted_tracks = []
 
             model,pathlist = treeselect.get_selected_rows()
@@ -1018,7 +1040,7 @@ class App(object):
                 for p in pathlist:
                     tree_iter = model.get_iter(p)
                     tracklayer = model.get_value(tree_iter, 5)
-                    tracklayer.set_stroke_color(self.track_highlight_color)
+                    tracklayer.set_stroke_color(self.clutter_color(self.track_highlight_color))
                     # Move the layer to the top
                     # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
                     #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
@@ -1120,4 +1142,28 @@ class App(object):
         self.builder.get_object("treeview1").get_selection().unselect_all()
 
     def settings_dialog(self, widget=None):
-        return
+        dialog = self.builder.get_object("dialog3")
+        response = dialog.run()
+        dialog.hide()
+        if response == Gtk.ResponseType.OK:
+            self.marker_color = self.builder.get_object("colorbutton1").get_color()
+            self.track_default_color = self.builder.get_object("colorbutton2").get_color()
+            self.track_highlight_color = self.builder.get_object("colorbutton3").get_color()
+            self.settings.set_value('marker-color', GLib.Variant('(iii)', self.color_tuple(self.marker_color)))
+            self.settings.set_value('normal-track-color', GLib.Variant('(iii)', self.color_tuple(self.track_default_color)))
+            self.settings.set_value('selected-track-color', GLib.Variant('(iii)', self.color_tuple(self.track_highlight_color)))
+            self.markerlayer.get_markers()[0].set_color(self.clutter_color(self.marker_color))
+            self.with_all_tracks_do(self.set_track_color)
+            self.treeselect2_changed(self.builder.get_object("treeview2").get_selection())
+        else:
+            self.builder.get_object("colorbutton1").set_color(self.marker_color)
+            self.builder.get_object("colorbutton2").set_color(self.track_default_color)
+            self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
+
+    def with_all_tracks_do (self, callback, userdata=None):
+        model = self.builder.get_object("liststore2")
+        model.foreach(callback, userdata)
+
+    def set_track_color(self, model, path, tree_iter, userdata):
+        tracklayer = model.get_value(tree_iter,5)
+        tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
