@@ -7,7 +7,7 @@
 # Original code copyright (C) 2009 Andrew Gee
 # Modifications copyright (C) 2012 Martijn Grendelman
 
-#from pprint import pprint
+from pprint import pprint
 import xml.dom.minidom as minidom
 from iso8601 import parse_date as parse_xml_date
 from datetime import datetime, timedelta
@@ -48,6 +48,35 @@ class GPXfile(object):
 
         # return the index of the just-added file, so the app can process it
         return len(self.gpxfiles) - 1
+
+    def find_coordinates(self, dt):
+        lat = None
+        lon = None
+        ele = None
+        for f in self.gpxfiles:
+            for t in f["tracks"]:
+                for s in t["segments"]:
+                    try:
+                        s_start = s["points"][0]['time'].replace(tzinfo=None)
+                        s_end = s["points"][-1]['time'].replace(tzinfo=None)
+                        if dt >= s_start and dt <= s_end:
+                            # we have found an appropriate segment
+                            tx = s_start
+                            latx = s["points"][0]['lat']
+                            lonx = s["points"][0]['lon']
+                            for p in s["points"]:
+                                t0 = p["time"].replace(tzinfo=None)
+                                if t0 >= dt:
+                                    # The point's time is greater than what we need
+                                    lat = (latx + p["lat"]) / 2
+                                    lon = (lonx + p["lon"]) / 2
+                                    break
+                                else:
+                                    latx = p["lat"]
+                                    lonx = p["lon"]
+                    except KeyError:
+                        pass
+        return (lat,lon,ele)
 
     def fetch_track(self,node):
         track = {}
