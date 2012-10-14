@@ -237,8 +237,10 @@
                 <property name="xalign">0</property>
                 <property name="label" translatable="yes">&lt;b&gt;Select timezone&lt;/b&gt;
 
-Select the timezone in which your tracks are
-recorded, to adjust the timestamps to local time
+To match an image with a GPS track, Taggert needs to
+know the difference between your camera's clock
+and UTC. Please select the time zone in which your
+camera's time is the local time.
 </property>
                 <property name="use_markup">True</property>
               </object>
@@ -592,6 +594,43 @@ Unchecked means 'ask every time'</property>
         <signal name="activate" handler="menuitem17_activate" swapped="no"/>
       </object>
     </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="menuitem20">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem21">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Go to image</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="menuitem21_activate" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem18">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Tag from marker</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="menuitem18_activate" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem19">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Tag from track</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="menuitem19_activate" swapped="no"/>
+      </object>
+    </child>
   </object>
   <object class="GtkMessageDialog" id="messagedialog1">
     <property name="can_focus">False</property>
@@ -750,7 +789,32 @@ Unchecked means 'ask every time'</property>
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
-                        <signal name="activate" handler="menuitem14_activate" swapped="no"/>
+                        <child type="submenu">
+                          <object class="GtkMenu" id="menu10">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <child>
+                              <object class="GtkMenuItem" id="menuitem23">
+                                <property name="use_action_appearance">False</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">General settings</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="menuitem23_activate" swapped="no"/>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkMenuItem" id="menuitem22">
+                                <property name="use_action_appearance">False</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Time zone</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="menuitem22_activate" swapped="no"/>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child>
