@@ -762,6 +762,9 @@ class App(object):
                 pass
 
     def delete_tag_from_selected(self, widget):
+        # Don't do this out of sight
+        if self.builder.get_object('notebook1').get_current_page() != 0:
+            return
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
         i=0
@@ -955,7 +958,7 @@ class App(object):
                     msg = os.path.basename(filename)
                 else:
                     msg = "%d files" % len(filenames)
-                self.show_infobar ("%d %stracks added from %s" % (i, 'hidden ' if not self.show_tracks else '', msg))
+                self.show_infobar ("%d %stracks added from '%s'" % (i, 'hidden ' if not self.show_tracks else '', msg))
             chooser.set_select_multiple(False)
 
     def set_timezone_dialog(self, widget=None):
