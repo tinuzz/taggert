@@ -44,7 +44,8 @@ END    = Clutter.BinAlignment.END
 
 class App(object):
 
-    def __init__(self):
+    def __init__(self, data_dir):
+        self.data_dir = data_dir
         self.imagedir   = ''
         self.filelist_locked = False
         self.home_location = (51.50063, -0.12456, 12)  # lat, lon, zoom
@@ -149,7 +150,7 @@ class App(object):
 
     def setup_gui(self):
         self.builder = Gtk.Builder()
-        self.builder.add_from_file("taggert.glade")
+        self.builder.add_from_file(os.path.join(self.data_dir, "taggert.glade"))
         self.window = self.builder.get_object("window1")
 
         # Restore window size
@@ -306,7 +307,6 @@ class App(object):
     def quit(self, _window, _event=None):
         if self.save_modified_dialog():
             self.save_settings()
-            print "Exit."
             Gtk.main_quit()
         else:
             return False

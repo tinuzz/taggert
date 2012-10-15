@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+%:
+	dh $@ --with python2
+
+override_dh_auto_install:
+	python setup.py install --root=debian/taggert --install-lib=/usr/share/taggert/ \
+		--install-scripts=/usr/share/taggert/ --install-data=/usr/share/
+	dh_link /usr/share/taggert/taggert_run /usr/bin/taggert
+
+override_dh_clean:
+	dh_clean
+	rm -rf build
