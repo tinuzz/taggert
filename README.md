@@ -9,14 +9,17 @@ Usage
 
 The idea behind Taggert is fairly simple:
 * Select a directory containing image files that you want to geo-tag
-* Select a location on the map by setting a marker
+* For tagging manually: select a location on the map by setting a marker
+* For bulk-tagging: Load GPS tracks from one or more GPX files
 * Select one ore more images in the list
-* Click a button to add the marker's location to the selected images
+* Click a button to add the marker's location or a matching location from the
+  GPS track to the selected images
 * Save your changes
 
 Features
 --------
 
+* Geo-tagging manually and with the help of GPS tracks from GPX files
 * Offers different free maps to work on, like different Openstreetmap maps,
   MapQuest maps and satellite images and maps-for-free
 * Shows a preview of selected images, so you know what you're doing
@@ -25,6 +28,7 @@ Features
 * Lets you remove tags from images, too
 * Uses GSettings to store runtime configuration options
 * Uses pytz to (hopefully) reliably calculate timezone offsets for tracks
+* Configurable colors for drawing tracks and markers
 
 Prerequisites
 -------------
@@ -38,7 +42,7 @@ The following software is needed to run Taggert:
 
 and the following PyGObject introspection libraries:
 
-* Gtk          (Debian: gir1.2-gtk-3.0:)
+* Gtk and Gdk  (Debian: gir1.2-gtk-3.0:)
 * GtkChamplain (Debian: gir1.2-gtkchamplain-0.12)
 * Champlain    (Debian: gir1.2-champlain-0.12)
 * Clutter      (Debian: gir1.2-clutter-1.0)
@@ -98,8 +102,10 @@ license can be found in the 'COPYING' file and on the web [6].
 Roadmap
 -------
 
-* GPX track support, so you can bulk-tag images from tracks
 * Altitude support. So far, EXIF tags dealing with altitude are completely ignored.
+* Support for more GPS file formats. Only GPX is supported now.
+* Editing and exporting GPS tracks
+* Tools to correct DateTime tags on images, to fix deviations in your camera's clock.
 * Packaging for Debian and maybe Ubuntu
 * Python 3 support
 
