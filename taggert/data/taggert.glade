@@ -29,7 +29,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 </property>
-    <property name="logo">icon.svg</property>
+    <property name="logo">taggert.svg</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="aboutdialog-vbox1">
         <property name="can_focus">False</property>
@@ -973,7 +973,7 @@ Unchecked means 'ask every time'</property>
     <property name="width_request">780</property>
     <property name="height_request">600</property>
     <property name="can_focus">False</property>
-    <property name="icon">icon.svg</property>
+    <property name="icon">taggert.svg</property>
     <signal name="delete-event" handler="window1_delete_event" swapped="no"/>
     <child>
       <object class="GtkBox" id="box1">

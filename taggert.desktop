@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Taggert
+Type=Application
+Comment=GTK+3 geotagger
+Exec=taggert
+Icon=taggert
+Categories=Graphics
+MimeType=application/xml

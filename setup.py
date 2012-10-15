@@ -16,5 +16,9 @@ setup(name="taggert",
     packages=['taggert'],
     scripts=['taggert_run'],
     package_data={'taggert': ['data/*']},
-    data_files=[('glib-2.0/schemas', ['com.tinuzz.taggert.gschema.xml'])],
+    data_files=[
+        ('glib-2.0/schemas', ['com.tinuzz.taggert.gschema.xml']),
+        ('applications', ['taggert.desktop']),
+        ('pixmaps', ['taggert/data/taggert.svg']),
+    ],
 )
