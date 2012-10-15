@@ -190,6 +190,7 @@ class App(object):
             "menuitem21_activate": self.go_to_image,
             "menuitem22_activate": self.set_timezone_dialog,
             "menuitem23_activate": self.settings_dialog,
+            "menuitem25_activate": self.treeview_x_select_all,
             "combobox1_changed": self.combobox_changed,
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
@@ -1048,10 +1049,10 @@ class App(object):
                     self.highlighted_tracks.append(tracklayer)
         self.markerlayer.raise_top()
 
-    def treeview2_select_all(self, widget):
+    def treeview2_select_all(self, widget=None):
         self.builder.get_object("treeview2").get_selection().select_all()
 
-    def treeview2_select_none(self, widget):
+    def treeview2_select_none(self, widget=None):
         self.builder.get_object("treeview2").get_selection().unselect_all()
 
     def init_timezonepre(self):
@@ -1167,3 +1168,10 @@ class App(object):
     def set_track_color(self, model, path, tree_iter, userdata):
         tracklayer = model.get_value(tree_iter,5)
         tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
+
+    def treeview_x_select_all(self, widget=None):
+        page = self.builder.get_object('notebook1').get_current_page()
+        if page == 0:
+            self.images_select_all()
+        elif page == 1:
+            self.treeview2_select_all()
