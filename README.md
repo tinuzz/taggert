@@ -84,6 +84,9 @@ by Andrew Gee. I modified it slightly for use with Taggert.
 The bundled code for parsing ISO8601 date strings comes from the 'pyiso8601'
 module, hosted on Google Code [3] and is copyright (C) 2007 Michael Twomey.
 
+Taggert's application icon was created by Martijn Grendelman, by combining parts
+from two different icons from OSA Icon Library 11.02 [7].
+
 The first incarnation of Taggert was based on osm-gps-map [4] rather than
 libchamplain and its code was based on the bundled mapviewer example [5],
 written by Hadley Rich. I don't think that any code written by Hadley Rich
@@ -98,6 +101,7 @@ license can be found in the 'COPYING' file and on the web [6].
 * [4] <http://nzjrs.github.com/osm-gps-map/>
 * [5] <https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py>
 * [6] <http://www.apache.org/licenses/LICENSE-2.0>
+* [7] <http://www.opensecurityarchitecture.org/cms/library/icon-library>
 
 Roadmap
 -------
