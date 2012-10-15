@@ -122,3 +122,7 @@ When gexiv2 v0.5.0 or greater is available for Debian, Taggert will be
 rewritten to use that, rather than pyexiv2.
 
 * [7] <http://redmine.yorba.org/projects/gexiv2/wiki>
+
+History
+-------
+2012-10-15   Released version 1.0
