@@ -36,6 +36,8 @@ from polygon import Polygon
 #GObject.threads_init()
 GtkClutter.init([])
 
+VERSION = 1.0
+
 START  = Clutter.BinAlignment.START
 CENTER = Clutter.BinAlignment.CENTER
 END    = Clutter.BinAlignment.END
@@ -163,6 +165,7 @@ class App(object):
         self.builder.get_object("colorbutton1").set_color(self.marker_color)
         self.builder.get_object("colorbutton2").set_color(self.track_default_color)
         self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
+        self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
 
     def setup_gui_signals(self):
 
@@ -174,6 +177,7 @@ class App(object):
             "imagemenuitem4_activate": self.open_gpx,
             "imagemenuitem5_activate": self.quit, # File -> Quit
             "imagemenuitem9_activate": self.delete_tag_from_selected, # File -> Quit
+            "imagemenuitem10_activate": self.about_box,
             "menuitem6_activate": self.map_add_marker,
             "menuitem7_activate": self.center_map_here,
             "menuitem8_activate": self.delete_bookmark,
@@ -1175,3 +1179,8 @@ class App(object):
             self.images_select_all()
         elif page == 1:
             self.treeview2_select_all()
+
+    def about_box(self, widget=None):
+        d = self.builder.get_object('aboutdialog1')
+        d.run()
+        d.hide()
