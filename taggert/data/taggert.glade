@@ -1154,12 +1154,13 @@ Unchecked means 'ask every time'</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuItem" id="menuitem25">
+                      <object class="GtkImageMenuItem" id="menuitem25">
+                        <property name="label">gtk-select-all</property>
                         <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Select all</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">True</property>
                         <accelerator key="a" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <signal name="activate" handler="menuitem25_activate" swapped="no"/>
                       </object>
