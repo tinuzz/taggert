@@ -437,10 +437,10 @@ class App(object):
             'http://www.gnu.org/copyleft/fdl.html',
             'http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets/#Z#/#X#/#Y#.png'],
 
-            ['mapbox-natural-earth', 'Mapbox Natural Earth', 0, 6, 256,
-            'Mapbox',
-            'http://www.gnu.org/copyleft/fdl.html',
-            'http://a.tiles.mapbox.com/v3/mapbox.natural-earth-2/#Z#/#X#/#Y#.png'],
+            #['mapbox-natural-earth', 'Mapbox Natural Earth', 0, 6, 256,
+            #'Mapbox',
+            #'http://www.gnu.org/copyleft/fdl.html',
+            #'http://a.tiles.mapbox.com/v3/mapbox.natural-earth-2/#Z#/#X#/#Y#.png'],
         ]
 
         # Usage of these sources is in violation of Google's terms of service,
