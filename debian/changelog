@@ -1,3 +1,9 @@
+taggert (1.1-1) unstable; urgency=low
+
+  * Upstream release 1.1
+
+ -- Martijn Grendelman <m@rtijn.net>  Tue, 16 Oct 2012 22:33:33 +0200
+
 taggert (1.0-1) unstable; urgency=low
 
   * First public release

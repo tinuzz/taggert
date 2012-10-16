@@ -36,7 +36,7 @@ from polygon import Polygon
 #GObject.threads_init()
 GtkClutter.init([])
 
-VERSION = 1.0
+VERSION = 1.1
 
 START  = Clutter.BinAlignment.START
 CENTER = Clutter.BinAlignment.CENTER
