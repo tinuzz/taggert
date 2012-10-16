@@ -1,18 +1,19 @@
 Source: taggert
-Section: misc
-Priority: optional
+Section: python
+Priority: extra
 Maintainer: Martijn Grendelman <m@rtijn.net>
-Uploaders: Martijn Grendelman <m@rtijn.net>
-Build-Depends: debhelper (>= 7.0.50~), python-support, python (>= 2.7), python-distutils-extra
+Build-Depends: debhelper (>= 8), python-support, python (>= 2.7), python-distutils-extra
 Standards-Version: 3.9.3
 Homepage: http://www.grendelman.net/wp/tags/taggert
+X-Python-Version: >= 2.7
 
 Package: taggert
 Architecture: all
 Depends: ${python:Depends}, python-gi, python-pyexiv2, python-tz,
   gir1.2-gtkchamplain-0.12, gir1.2-gtkclutter-1.0, ${misc:Depends}
-Description: geotag images using a map or a GPS trace
- This Python application can be used for geotagging images, either manually,
+Description: GTK+ 3 geotagging application that utilizes a map or a GPS trace
+ Taggert is an easy-to-use application for geotagging images, either manually,
  using a map like OpenStreetMap, or automatically, using a GPS track. The
- program uses the pyexiv2, PyGObject and pytz modules. It is written for GTK+
- version 3 or higher and is not compatible with GTK+ 2.
+ program is written in Python and uses the pyexiv2, PyGObject and pytz
+ modules. It is written for GTK+ version 3 or higher and is not compatible
+ with GTK+ 2.
