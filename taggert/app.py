@@ -44,8 +44,9 @@ END    = Clutter.BinAlignment.END
 
 class App(object):
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, args):
         self.data_dir = data_dir
+        self.args = args
         self.imagedir   = ''
         self.filelist_locked = False
         self.home_location = (51.50063, -0.12456, 12)  # lat, lon, zoom
@@ -396,7 +397,7 @@ class App(object):
 
         self.mapstore = self.builder.get_object("liststore3")
 
-        for map_desc in [
+        sources = [
             ['osm-mapnik', 'OpenStreetMap Mapnik', 0, 18, 256,
             'Map data is CC-BY-SA 2.0 OpenStreetMap contributors',
             'http://creativecommons.org/licenses/by-sa/2.0/',
@@ -426,32 +427,37 @@ class App(object):
             'Map data available under GNU Free Documentation license, v1.2 or later',
             'http://www.gnu.org/copyleft/fdl.html',
             'http://maps-for-free.com/layer/relief/z#Z#/row#Y#/#Z#_#X#-#Y#.jpg'],
+        ]
 
-            ['google-maps', 'Google Maps', 0, 19, 256,
-            'Map data Copyright 2011 Google and 3rd party suppliers',
-            'https://developers.google.com/maps/terms?hl=en',
-            'http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X#&y=#Y#&z=#Z#'],
+        if self.args.google:
+            sources.extend([
+                ['google-maps', 'Google Maps', 0, 19, 256,
+                'Map data Copyright 2011 Google and 3rd party suppliers',
+                'https://developers.google.com/maps/terms?hl=en',
+                'http://mt1.google.com/vt/lyrs=m@110&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-aerial', 'Google Aerial', 0, 22, 256,
-            'Map data Copyright 2011 Google and 3rd party suppliers',
-            'https://developers.google.com/maps/terms?hl=en',
-            'http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X#&y=#Y#&z=#Z#'],
+                ['google-aerial', 'Google Aerial', 0, 22, 256,
+                'Map data Copyright 2011 Google and 3rd party suppliers',
+                'https://developers.google.com/maps/terms?hl=en',
+                'http://mt1.google.com/vt/lyrs=s&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-aerial-streets', 'Google Aerial with streets', 0, 22, 256,
-            'Map data Copyright 2011 Google and 3rd party suppliers',
-            'https://developers.google.com/maps/terms?hl=en',
-            'http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X#&y=#Y#&z=#Z#'],
+                ['google-aerial-streets', 'Google Aerial with streets', 0, 22, 256,
+                'Map data Copyright 2011 Google and 3rd party suppliers',
+                'https://developers.google.com/maps/terms?hl=en',
+                'http://mt1.google.com/vt/lyrs=y&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-terrain', 'Google Terrain', 0, 15, 256,
-            'Map data Copyright 2011 Google and 3rd party suppliers',
-            'https://developers.google.com/maps/terms?hl=en',
-            'http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X#&y=#Y#&z=#Z#'],
+                ['google-terrain', 'Google Terrain', 0, 15, 256,
+                'Map data Copyright 2011 Google and 3rd party suppliers',
+                'https://developers.google.com/maps/terms?hl=en',
+                'http://mt1.google.com/vt/lyrs=t&hl=pl&x=#X#&y=#Y#&z=#Z#'],
 
-            ['google-terrain-streets', 'Google Terrain with streets', 0, 15, 256,
-            'Map data Copyright 2011 Google and 3rd party suppliers',
-            'https://developers.google.com/maps/terms?hl=en',
-            'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X#&y=#Y#&z=#Z#'],
-            ]:
+                ['google-terrain-streets', 'Google Terrain with streets', 0, 15, 256,
+                'Map data Copyright 2011 Google and 3rd party suppliers',
+                'https://developers.google.com/maps/terms?hl=en',
+                'http://mt1.google.com/vt/lyrs=p&hl=pl&x=#X#&y=#Y#&z=#Z#'],
+            ])
+
+        for map_desc in sources:
             mapid, name, min_zoom, max_zoom, size, lic, lic_uri, tile_uri = map_desc
 
             c = Champlain.MapSourceChain()
