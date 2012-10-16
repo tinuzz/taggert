@@ -79,7 +79,8 @@ inspired heavily by GottenGeography [1], written by Robert Bruce Park, and his
 code was used as a starting point on some occasions.
 
 The code for parsing GPX files was taken from GPX Viewer [2], which was written
-by Andrew Gee. I modified it slightly for use with Taggert.
+by Andrew Gee and used with permission. I modified it slightly for use with
+Taggert.
 
 The bundled code for parsing ISO8601 date strings comes from the 'pyiso8601'
 module, hosted on Google Code [3] and is copyright (C) 2007 Michael Twomey.

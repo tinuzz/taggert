@@ -11,7 +11,9 @@
     <property name="type_hint">dialog</property>
     <property name="program_name">Taggert</property>
     <property name="version">#VERSION#</property>
-    <property name="copyright" translatable="yes">Copyright © 2012 Martijn Grendelman</property>
+    <property name="copyright" translatable="yes">Copyright © 2012 Martijn Grendelman
+GPX import code Copyright © 2009 Andrew Gee
+ISO 8601 parser Copyright © 2007 Michael Twomey</property>
     <property name="comments" translatable="yes">A GTK+3 geotagging application</property>
     <property name="website">https://github.com/tinuzz/taggert/blob/master/README.md</property>
     <property name="website_label" translatable="yes">Homepage</property>

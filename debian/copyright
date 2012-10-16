@@ -2,13 +2,16 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Taggert
 Upstream-Contact: Martijn Grendelman <m@rtijn.net>
 Source: https://github.com/tinuzz/taggert
+
 Files: *
 Copyright: 2012, Martijn Grendelman <m@rtijn.net>
 License: Apache
+
 Files: gpxfile.py
 Copyright: 2009 Andrew Gee
            2012, Martijn Grendelman <m@rtijn.net>
 License: Apache
+
 Files: iso8601.py
 Copyright: 2007 Michael Twomey
 License: Apache
