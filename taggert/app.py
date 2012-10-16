@@ -441,6 +441,11 @@ class App(object):
             #'Mapbox',
             #'http://www.gnu.org/copyleft/fdl.html',
             #'http://a.tiles.mapbox.com/v3/mapbox.natural-earth-2/#Z#/#X#/#Y#.png'],
+
+            ['stamen-watercolor', 'Stamen Watercolor', 0, 17, 256,
+            'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA',
+            'http://creativecommons.org/licenses/by-sa/3.0/',
+            'http://tile.stamen.com/watercolor/#Z#/#X#/#Y#.jpg'],
         ]
 
         # Usage of these sources is in violation of Google's terms of service,
