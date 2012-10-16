@@ -44,6 +44,8 @@ END    = Clutter.BinAlignment.END
 
 class App(object):
 
+    latlon_buffer = ('', '', '')
+
     def __init__(self, data_dir, args):
         self.data_dir = data_dir
         self.args = args
@@ -178,6 +180,8 @@ class App(object):
             "imagemenuitem3_activate": self.save_all,
             "imagemenuitem4_activate": self.open_gpx,
             "imagemenuitem5_activate": self.quit, # File -> Quit
+            "imagemenuitem7_activate": self.copy_tag,
+            "imagemenuitem8_activate": self.paste_tag,
             "imagemenuitem9_activate": self.delete_tag_from_selected, # File -> Quit
             "imagemenuitem10_activate": self.about_box,
             "menuitem6_activate": self.map_add_marker,
@@ -427,8 +431,20 @@ class App(object):
             'Map data available under GNU Free Documentation license, v1.2 or later',
             'http://www.gnu.org/copyleft/fdl.html',
             'http://maps-for-free.com/layer/relief/z#Z#/row#Y#/#Z#_#X#-#Y#.jpg'],
+
+            ['mapbox-streets', 'Mapbox Streets', 0, 17, 256,
+            'Mapbox',
+            'http://www.gnu.org/copyleft/fdl.html',
+            'http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets/#Z#/#X#/#Y#.png'],
+
+            ['mapbox-natural-earth', 'Mapbox Natural Earth', 0, 6, 256,
+            'Mapbox',
+            'http://www.gnu.org/copyleft/fdl.html',
+            'http://a.tiles.mapbox.com/v3/mapbox.natural-earth-2/#Z#/#X#/#Y#.png'],
         ]
 
+        # Usage of these sources is in violation of Google's terms of service,
+        # see http://maps.google.com/help/terms_maps.html
         if self.args.google:
             sources.extend([
                 ['google-maps', 'Google Maps', 0, 19, 256,
@@ -473,6 +489,9 @@ class App(object):
             self.map_sources[mapid] = c
             self.map_sources_names[mapid] = name
             self.mapstore.append([mapid, name])
+
+        if not self.map_id in self.map_sources:
+            self.map_id = 'osm-mapnik'
 
     def combobox_changed(self, combobox):
         model = combobox.get_model()
@@ -720,24 +739,12 @@ class App(object):
         self.save_bookmarks()
 
     def tag_selected_from_marker(self, widget):
-        treeselect = self.builder.get_object("treeview1").get_selection()
-        model,pathlist = treeselect.get_selected_rows()
-        if pathlist:
-            try:
-                i=0
-                m = self.markerlayer.get_markers()[0]
-                lat, lon = (m.get_latitude(), m.get_longitude())
-                for p in pathlist:
-                    tree_iter = model.get_iter(p)
-                    filename = model[tree_iter][0]
-                    model[tree_iter][3] = "%.5f" % lat
-                    model[tree_iter][4] = "%.5f" % lon
-                    model[tree_iter][5] = True
-                    self.modified[filename] = {'latitude': lat, 'longitude': lon}
-                    i += 1
-                self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
-            except IndexError:
-                pass
+        try:
+            m = self.markerlayer.get_markers()[0]
+            lat, lon = (m.get_latitude(), m.get_longitude())
+            self.tag_selected(lat,lon)
+        except IndexError:
+            pass
 
     def tag_selected_from_track(self, widget):
         # Any tracks available?
@@ -766,6 +773,25 @@ class App(object):
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
                 pass
+
+    def tag_selected(self, lat, lon):
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if pathlist:
+            i=0
+            for p in pathlist:
+                tree_iter = model.get_iter(p)
+                filename = model[tree_iter][0]
+                try:
+                    model[tree_iter][3] = "%.5f" % float(lat)
+                    model[tree_iter][4] = "%.5f" % float(lon)
+                except ValueError:  # could not convert to float
+                    model[tree_iter][3] = ''
+                    model[tree_iter][4] = ''
+                model[tree_iter][5] = True
+                self.modified[filename] = {'latitude': lat, 'longitude': lon}
+                i += 1
+            self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
 
     def delete_tag_from_selected(self, widget):
         # Don't do this out of sight
@@ -1193,3 +1219,26 @@ class App(object):
         d = self.builder.get_object('aboutdialog1')
         d.run()
         d.hide()
+
+    def copy_tag(self, widget=None):
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if len(pathlist) > 1:
+            self.show_infobar("Cannot copy from multiple images. Select only one.")
+        else:
+            tree_iter = model.get_iter(pathlist[0])
+            lat = model.get_value(tree_iter,3)
+            lon = model.get_value(tree_iter,4)
+            self.latlon_buffer = (lat, lon, '')
+            if lat and lon:
+                self.latlon_buffer = (lat, lon, '')
+                msg = "coordinates %s,%s" % (lat,lon)
+            else:
+                msg = "empty coordinates"
+            self.show_infobar("Copied %s" % msg)
+
+    def paste_tag(self, widget=None):
+        if self.builder.get_object('notebook1').get_current_page() != 0:
+            return
+        lat, lon, ele = self.latlon_buffer
+        self.tag_selected(lat,lon)
