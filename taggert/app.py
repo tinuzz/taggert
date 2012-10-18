@@ -62,6 +62,7 @@ class App(object):
         self.show_untagged_only = False
         self.show_map_coords = True
         self.show_tracks = True
+        self.show_elevation_column = False
         self.gpx = GPXfile()
         self.last_track_folder = None
         self.track_highlight_color = Gdk.Color(0,0,65535)
@@ -71,6 +72,8 @@ class App(object):
         self.highlighted_tracks = []
         self.track_timezone = 'Europe/Amsterdam'
         self.always_this_timezone = False
+        self.timeout2_id = None
+        self.pane_position = 600
 
     def main(self):
         self.read_settings()
@@ -125,11 +128,13 @@ class App(object):
         )
 
         self.show_map_coords = self.settings.get_value('show-map-coords').get_boolean()
+        self.show_elevation_column = self.settings.get_value('show-elevation-column').get_boolean()
         self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
         self.imagedir = self.settings.get_value('last-image-dir').get_string()
         self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
         self.track_timezone = self.settings.get_value('track-timezone').get_string()
         self.always_this_timezone = self.settings.get_value('always-this-timezone').get_boolean()
+        self.pane_position = self.settings.get_value('pane-position').get_int32()
 
         # Colors
         self.marker_color = self.get_color_from_settings('marker-color')
@@ -163,6 +168,7 @@ class App(object):
         self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
         self.builder.get_object("checkmenuitem9").set_active(self.show_map_coords)
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
+        self.builder.get_object("checkmenuitem3").set_active(self.show_elevation_column)
         self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
@@ -170,6 +176,8 @@ class App(object):
         self.builder.get_object("colorbutton2").set_color(self.track_default_color)
         self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
         self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
+        self.builder.get_object("paned1").set_position(self.pane_position)
+        self.builder.get_object("paned1").connect('notify::position', self.paned1_handle_moved)
 
     def setup_gui_signals(self):
 
@@ -182,7 +190,7 @@ class App(object):
             "imagemenuitem5_activate": self.quit, # File -> Quit
             "imagemenuitem7_activate": self.copy_tag,
             "imagemenuitem8_activate": self.paste_tag,
-            "imagemenuitem9_activate": self.delete_tag_from_selected, # File -> Quit
+            "imagemenuitem9_activate": self.delete_tag_from_selected,
             "imagemenuitem10_activate": self.about_box,
             "menuitem6_activate": self.map_add_marker,
             "menuitem7_activate": self.center_map_here,
@@ -205,6 +213,7 @@ class App(object):
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
             "checkmenuitem2_toggled": self.toggle_tracks,
+            "checkmenuitem3_toggled": self.toggle_elevation,
             "checkmenuitem9_toggled": self.toggle_overlay,
             "treeview-selection1_changed": self.treeselect_changed,
             "treeview-selection2_changed": self.treeselect2_changed,
@@ -287,17 +296,22 @@ class App(object):
         col1 = Gtk.TreeViewColumn("EXIF DateTime", renderer, text=1, cell_background_set=5)
         col2 = Gtk.TreeViewColumn("Latitude", renderer, text=3, cell_background_set=5)
         col3 = Gtk.TreeViewColumn("Longitude", renderer, text=4, cell_background_set=5)
+        col4 = Gtk.TreeViewColumn("Elevation", renderer, text=8, cell_background_set=5)
 
         col0.set_sort_column_id(0)
         col1.set_sort_column_id(1)
         col2.set_sort_column_id(3)
         col3.set_sort_column_id(4)
+        col4.set_sort_column_id(5)
 
         tree = self.builder.get_object("treeview1")
         tree.append_column(col0)
         tree.append_column(col1)
         tree.append_column(col2)
         tree.append_column(col3)
+        tree.append_column(col4)
+
+        col4.set_visible(self.show_elevation_column)
 
     def update_adjustment1(self):
         ms = self.map_sources[self.map_id]
@@ -382,8 +396,20 @@ class App(object):
                                     imglon = self.dms_to_decimal(*args3)
                                 except KeyError:
                                     imglon = ''
+                            try:
+                                data =  self.modified[fl]
+                                imgele = data['elevation']
+                            except KeyError:
+                                try:
+                                    imgele = float(metadata['Exif.GPSInfo.GPSAltitude'].value)
+                                    if int(metadata['Exif.GPSInfo.GPSAltitudeRef'].value) > 0:
+                                        imgele *= -1
+                                    imgele = str(imgele)
+                                except KeyError:
+                                    imgele = ''
+
                             if not self.show_untagged_only or imglat == '' or imglon == '' or data:
-                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj])
+                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj, imgele])
                                 shown += 1
                             else:
                                 notshown += 1
@@ -747,7 +773,8 @@ class App(object):
         try:
             m = self.markerlayer.get_markers()[0]
             lat, lon = (m.get_latitude(), m.get_longitude())
-            self.tag_selected(lat,lon)
+            ele = 0.0
+            self.tag_selected(lat,lon,ele)
         except IndexError:
             pass
 
@@ -772,14 +799,15 @@ class App(object):
                             # Modify the coordinates
                             model[tree_iter][3] = "%.5f" % lat
                             model[tree_iter][4] = "%.5f" % lon
+                            model[tree_iter][8] = "%.2f" % ele
                             model[tree_iter][5] = True
-                            self.modified[filename] = {'latitude': lat, 'longitude': lon}
+                            self.modified[filename] = {'latitude': lat, 'longitude': lon, 'elevation': ele}
                             i += 1
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
                 pass
 
-    def tag_selected(self, lat, lon):
+    def tag_selected(self, lat, lon, ele):
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
         if pathlist:
@@ -790,11 +818,12 @@ class App(object):
                 try:
                     model[tree_iter][3] = "%.5f" % float(lat)
                     model[tree_iter][4] = "%.5f" % float(lon)
+                    model[tree_iter][8] = "%.2f" % float(ele)
                 except ValueError:  # could not convert to float
                     model[tree_iter][3] = ''
                     model[tree_iter][4] = ''
                 model[tree_iter][5] = True
-                self.modified[filename] = {'latitude': lat, 'longitude': lon}
+                self.modified[filename] = {'latitude': lat, 'longitude': lon, 'elevation': ele}
                 i += 1
             self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
 
@@ -815,7 +844,8 @@ class App(object):
                     model[tree_iter][3] = ''
                     model[tree_iter][4] = ''
                     model[tree_iter][5] = True
-                    self.modified[filename] = {'latitude': '', 'longitude': ''}
+                    model[tree_iter][8] = ''
+                    self.modified[filename] = {'latitude': '', 'longitude': '', 'altitude': ''}
                     i += 1
         self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
 
@@ -829,7 +859,7 @@ class App(object):
     def decimal_to_dms(self, decimal):
         remainder, degrees = modf(abs(decimal))
         remainder, minutes = modf(remainder * 60)
-        return [fractions.Fraction.from_float(n).limit_denominator(99999) for n in (degrees, minutes, remainder * 60)]
+        return [self.float_to_fraction(n) for n in (degrees, minutes, remainder * 60)]
 
     def save_all(self, widget=None):
         model = self.builder.get_object('treeview1').get_model()
@@ -850,21 +880,32 @@ class App(object):
             try:
                 lat = float(model.get_value(tree_iter,3))
                 lon = float(model.get_value(tree_iter,4))
+                ele = float(model.get_value(tree_iter,8))
                 metadata['Exif.GPSInfo.GPSLatitude'] = self.decimal_to_dms(lat)
                 metadata['Exif.GPSInfo.GPSLongitude'] = self.decimal_to_dms(lon)
+                metadata['Exif.GPSInfo.GPSAltitude'] = self.float_to_fraction(ele)
                 metadata['Exif.GPSInfo.GPSLatitudeRef'] = 'N' if lat >= 0 else 'S'
                 metadata['Exif.GPSInfo.GPSLongitudeRef'] = 'E' if lon >= 0 else 'W'
+                metadata['Exif.GPSInfo.GPSAltitudeRef'] = '0' if ele >= 0 else '1'
                 metadata['Exif.GPSInfo.GPSMapDatum'] = 'WGS-84'
             # If the tag is empty, the conversion to float will fail with a ValueError
             except ValueError:
                 try:
                     del metadata['Exif.GPSInfo.GPSLatitude']
                     del metadata['Exif.GPSInfo.GPSLongitude']
+                    del metadata['Exif.GPSInfo.GPSAltitude']
                     del metadata['Exif.GPSInfo.GPSLatitudeRef']
                     del metadata['Exif.GPSInfo.GPSLongitudeRef']
+                    del metadata['Exif.GPSInfo.GPSAltitudeRef']
                     del metadata['Exif.GPSInfo.GPSMapDatum']
                 except KeyError:
                     pass
+
+            # This is a stupid hack, but Taggert seems to crash when 'save_all' is called
+            # when the file chooser's current folder is the imagedir
+            chooser = self.builder.get_object ("filechooserdialog1")
+            chooser.set_current_folder_uri('file:///')
+
             metadata.write()
             model[tree_iter][5] = False  # saved => not modified
             del self.modified[fl]
@@ -1234,7 +1275,8 @@ class App(object):
             tree_iter = model.get_iter(pathlist[0])
             lat = model.get_value(tree_iter,3)
             lon = model.get_value(tree_iter,4)
-            self.latlon_buffer = (lat, lon, '')
+            ele = model.get_value(tree_iter,8)
+            self.latlon_buffer = (lat, lon, ele)
             if lat and lon:
                 self.latlon_buffer = (lat, lon, '')
                 msg = "coordinates %s,%s" % (lat,lon)
@@ -1246,4 +1288,22 @@ class App(object):
         if self.builder.get_object('notebook1').get_current_page() != 0:
             return
         lat, lon, ele = self.latlon_buffer
-        self.tag_selected(lat,lon)
+        self.tag_selected(lat,lon,ele)
+
+    def toggle_elevation(self, widget=None):
+        checked = self.builder.get_object("checkmenuitem3").get_active()
+        self.show_elevation_column = checked
+        self.settings.set_value("show-elevation-column", GLib.Variant('b', checked))
+        self.builder.get_object("treeview1").get_column(4).set_visible(checked)
+
+    def paned1_handle_moved(self, pane, _ignored):
+        if self.timeout2_id:
+            GLib.source_remove(self.timeout2_id)
+        self.timeout2_id = GLib.timeout_add_seconds(3, self.save_paned_position, pane)
+
+    def save_paned_position(self, pane):
+        self.settings.set_value("pane-position", GLib.Variant('i', pane.get_property('position')))
+        return False
+
+    def float_to_fraction(self,value):
+        return fractions.Fraction.from_float(value).limit_denominator(99999)

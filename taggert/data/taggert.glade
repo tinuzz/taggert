@@ -696,6 +696,8 @@ Unchecked means 'ask every time'</property>
       <column type="gchararray"/>
       <!-- column-name datetimeobj -->
       <column type="PyObject"/>
+      <!-- column-name elevation -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkListStore" id="liststore2">
@@ -1208,6 +1210,16 @@ Unchecked means 'ask every time'</property>
                         <property name="label" translatable="yes">Tracks</property>
                         <property name="use_underline">True</property>
                         <signal name="toggled" handler="checkmenuitem2_toggled" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkCheckMenuItem" id="checkmenuitem3">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Elevation column</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="checkmenuitem3_toggled" swapped="no"/>
                       </object>
                     </child>
                   </object>

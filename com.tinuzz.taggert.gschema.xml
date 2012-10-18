@@ -33,6 +33,10 @@
       <default>true</default>
       <summary>Determines whether or not to show the latitude and longitude atop the map.</summary>
     </key>
+    <key type="b" name="show-elevation-column">
+      <default>false</default>
+      <summary>Whether or not to show the elevation in the images list.</summary>
+    </key>
     <key type="b" name="show-untagged-only">
       <default>false</default>
       <summary>Wether to only show untagged images in the file list</summary>
@@ -64,6 +68,10 @@
     <key type="b" name="always-this-timezone">
       <default>false</default>
       <summary>Wether to always use the same timezone for importing track files.</summary>
+    </key>
+    <key type="i" name="pane-position">
+      <default>600</default>
+      <summary>The position of the main window pane handle.</summary>
     </key>
   </schema>
 </schemalist>

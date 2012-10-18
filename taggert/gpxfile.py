@@ -64,16 +64,19 @@ class GPXfile(object):
                             tx = s_start
                             latx = s["points"][0]['lat']
                             lonx = s["points"][0]['lon']
+                            elex = s["points"][0]['ele']
                             for p in s["points"]:
                                 t0 = p["time"].replace(tzinfo=None)
                                 if t0 >= dt:
                                     # The point's time is greater than what we need
                                     lat = (latx + p["lat"]) / 2
                                     lon = (lonx + p["lon"]) / 2
+                                    ele = (elex + p["ele"]) / 2
                                     break
                                 else:
                                     latx = p["lat"]
                                     lonx = p["lon"]
+                                    elex = p["ele"]
                     except KeyError:
                         pass
         return (lat,lon,ele)
@@ -122,6 +125,8 @@ class GPXfile(object):
                 point['time'] = t0 + self.delta
             elif tpnode.nodeName == "name":
                 point['name'] = tpnode.childNodes[0].nodeValue
+        if not 'ele' in point:
+            point['ele'] = 0.0
         return point
 
 
