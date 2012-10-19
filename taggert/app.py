@@ -472,6 +472,11 @@ class App(object):
             'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA',
             'http://creativecommons.org/licenses/by-sa/3.0/',
             'http://tile.stamen.com/watercolor/#Z#/#X#/#Y#.jpg'],
+
+            #['cloudmade-fresh', 'Cloudmade Fresh 997', 0, 18, 256,
+            #'(C) 2008-2012 CloudMade. Map data (C) 2012 OpenStreetMap.org contributors',
+            #'http://creativecommons.org/licenses/by-sa/3.0/',
+            #'http://b.tile.cloudmade.com/8ee2a50541944fb9bcedded5165f09d9/997/256/#Z#/#X#/#Y#.png'],
         ]
 
         # Usage of these sources is in violation of Google's terms of service,
@@ -586,9 +591,9 @@ class App(object):
 
     def select_dir(self, widget):
         if self.save_modified_dialog():
-            chooser = self.builder.get_object ("filechooserdialog1")
-            chooser.set_title("Select image folder")
-            chooser.set_action(Gtk.FileChooserAction.SELECT_FOLDER)
+            chooser = Gtk.FileChooserDialog("Select image folder", self.window, Gtk.FileChooserAction.SELECT_FOLDER,
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, "Select", Gtk.ResponseType.OK))
+            chooser.set_create_folders(False)
 
             if self.imagedir and os.path.isdir(self.imagedir):
                 chooser.set_current_folder_uri('file://%s' % self.imagedir)
@@ -600,6 +605,7 @@ class App(object):
                 self.settings.set_value("last-image-dir", GLib.Variant('s', self.imagedir))
                 self.modified = {}
                 self.populate_store1 ()
+            chooser.destroy()
 
     def go_to_location(self, lat, lon, zoom=None):
         self.osm.center_on(lat, lon)
@@ -901,11 +907,6 @@ class App(object):
                 except KeyError:
                     pass
 
-            # This is a stupid hack, but Taggert seems to crash when 'save_all' is called
-            # when the file chooser's current folder is the imagedir
-            chooser = self.builder.get_object ("filechooserdialog1")
-            chooser.set_current_folder_uri('file:///')
-
             metadata.write()
             model[tree_iter][5] = False  # saved => not modified
             del self.modified[fl]
@@ -1014,16 +1015,15 @@ class App(object):
             filefilter.set_name("GPX files")
             filefilter.add_pattern('*.gpx')
             filefilter.add_pattern('*.GPX')
-            chooser = self.builder.get_object ("filechooserdialog1")
-            chooser.set_title("Open GPX file")
+
+            chooser = Gtk.FileChooserDialog("Open GPX file", self.window, Gtk.FileChooserAction.OPEN,
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
             chooser.set_select_multiple(True)
-            chooser.set_action(Gtk.FileChooserAction.OPEN)
             chooser.add_filter(filefilter)
             if self.last_track_folder and os.path.isdir(self.last_track_folder):
                 chooser.set_current_folder_uri('file://%s' % self.last_track_folder)
             response = chooser.run()
             chooser.hide()
-            chooser.remove_filter(filefilter)
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
                 filenames = chooser.get_filenames()
                 if not self.always_this_timezone:
@@ -1037,7 +1037,7 @@ class App(object):
                 else:
                     msg = "%d files" % len(filenames)
                 self.show_infobar ("%d %stracks added from '%s'" % (i, 'hidden ' if not self.show_tracks else '', msg))
-            chooser.set_select_multiple(False)
+            chooser.destroy()
 
     def set_timezone_dialog(self, widget=None):
         dialog = self.builder.get_object ("dialog2")
