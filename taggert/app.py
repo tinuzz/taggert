@@ -983,6 +983,7 @@ class App(object):
             if not self.show_tracks:
                 tracklayer.hide()
             i += 1
+            self.update_gtk()
 
         self.markerlayer.raise_top()
         # Store the directory of the file for next time
@@ -1029,6 +1030,8 @@ class App(object):
                 if not self.always_this_timezone:
                     self.set_timezone_dialog()
                 i = 0
+                self.builder.get_object('notebook1').set_current_page(1)
+                self.update_gtk()
                 for filename in filenames:
                     # self.process_gpx returns the number of tracks
                     i += self.process_gpx(filename, self.track_timezone)
@@ -1307,3 +1310,7 @@ class App(object):
 
     def float_to_fraction(self,value):
         return fractions.Fraction.from_float(value).limit_denominator(99999)
+
+    def update_gtk(self):
+        while Gtk.events_pending():
+            Gtk.main_iteration()
