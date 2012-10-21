@@ -32,6 +32,7 @@ import xml.dom.minidom as minidom
 from iso8601 import parse_date as parse_xml_date
 from gpxfile import GPXfile
 from polygon import Polygon
+import constants
 
 #GObject.threads_init()
 GtkClutter.init([])
@@ -289,20 +290,30 @@ class App(object):
         #combobox.set_active(0)
 
     def init_treeview1(self):
-        self.builder.get_object("liststore1").set_sort_column_id(0,  Gtk.SortType.ASCENDING)
+        self.builder.get_object("liststore1").set_sort_column_id(constants.images.filename,  Gtk.SortType.ASCENDING)
         renderer = Gtk.CellRendererText()
         renderer.set_property('cell-background', 'yellow')
-        col0 = Gtk.TreeViewColumn("Filename", renderer, text=0, cell_background_set=5)
-        col1 = Gtk.TreeViewColumn("EXIF DateTime", renderer, text=1, cell_background_set=5)
-        col2 = Gtk.TreeViewColumn("Latitude", renderer, text=3, cell_background_set=5)
-        col3 = Gtk.TreeViewColumn("Longitude", renderer, text=4, cell_background_set=5)
-        col4 = Gtk.TreeViewColumn("Elevation", renderer, text=8, cell_background_set=5)
+        col0 = Gtk.TreeViewColumn("Filename", renderer,
+            text=constants.images.filename,
+            cell_background_set=constants.images.modified)
+        col1 = Gtk.TreeViewColumn("EXIF DateTime", renderer,
+            text=constants.images.datetime,
+            cell_background_set=constants.images.modified)
+        col2 = Gtk.TreeViewColumn("Latitude", renderer,
+            text=constants.images.latitude,
+            cell_background_set=constants.images.modified)
+        col3 = Gtk.TreeViewColumn("Longitude", renderer,
+            text=constants.images.longitude,
+            cell_background_set=constants.images.modified)
+        col4 = Gtk.TreeViewColumn("Elevation", renderer,
+            text=constants.images.elevation,
+            cell_background_set=constants.images.modified)
 
-        col0.set_sort_column_id(0)
-        col1.set_sort_column_id(1)
-        col2.set_sort_column_id(3)
-        col3.set_sort_column_id(4)
-        col4.set_sort_column_id(5)
+        col0.set_sort_column_id(constants.images.filename)
+        col1.set_sort_column_id(constants.images.datetime)
+        col2.set_sort_column_id(constants.images.latitude)
+        col3.set_sort_column_id(constants.images.longitude)
+        col4.set_sort_column_id(constants.images.elevation)
 
         tree = self.builder.get_object("treeview1")
         tree.append_column(col0)
@@ -754,8 +765,8 @@ class App(object):
             # Get the first selected picture
             p = pathlist[0]
             tree_iter = model.get_iter(p)
-            lat = model.get_value(tree_iter,3)
-            lon = model.get_value(tree_iter,4)
+            lat = model.get_value(tree_iter,constants.images.latitude)
+            lon = model.get_value(tree_iter,constants.images.longitude)
             if lat and lon:
                 self.add_marker_at(float(lat),float(lon))
                 self.go_to_marker()
