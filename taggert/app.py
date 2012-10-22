@@ -15,20 +15,24 @@
 #   limitations under the License.
 
 import os
-import pyexiv2
 import fractions
 import time
-import pytz
 from math import modf
+
+import pytz
+import pyexiv2
+import xml.dom.minidom as minidom
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
 from gi.repository import Clutter
-from gi.repository import Gtk, GtkChamplain
+from gi.repository import Gtk
+from gi.repository import GtkChamplain
 from gi.repository import Champlain
 from gi.repository import GdkPixbuf
-from gi.repository import Gio, GLib
+from gi.repository import Gio
+from gi.repository import GLib
 from gi.repository import Gdk
 from pprint import pprint
-import xml.dom.minidom as minidom
+
 from iso8601 import parse_date as parse_xml_date
 from gpxfile import GPXfile
 from polygon import Polygon
@@ -238,7 +242,6 @@ class App(object):
 
     def setup_map(self):
         widget = GtkChamplain.Embed()
-        #widget.set_size_request(640, 480)
 
         box = self.builder.get_object("box2")
         box.pack_start(widget, True, True, 0)
@@ -290,30 +293,31 @@ class App(object):
         #combobox.set_active(0)
 
     def init_treeview1(self):
-        self.builder.get_object("liststore1").set_sort_column_id(constants.images.filename,  Gtk.SortType.ASCENDING)
+        self.builder.get_object("liststore1").set_sort_column_id(constants.images.columns.filename,
+                                                                 Gtk.SortType.ASCENDING)
         renderer = Gtk.CellRendererText()
         renderer.set_property('cell-background', 'yellow')
         col0 = Gtk.TreeViewColumn("Filename", renderer,
-            text=constants.images.filename,
-            cell_background_set=constants.images.modified)
+            text=constants.images.columns.filename,
+            cell_background_set=constants.images.columns.modified)
         col1 = Gtk.TreeViewColumn("EXIF DateTime", renderer,
-            text=constants.images.datetime,
-            cell_background_set=constants.images.modified)
+            text=constants.images.columns.datetime,
+            cell_background_set=constants.images.columns.modified)
         col2 = Gtk.TreeViewColumn("Latitude", renderer,
-            text=constants.images.latitude,
-            cell_background_set=constants.images.modified)
+            text=constants.images.columns.latitude,
+            cell_background_set=constants.images.columns.modified)
         col3 = Gtk.TreeViewColumn("Longitude", renderer,
-            text=constants.images.longitude,
-            cell_background_set=constants.images.modified)
+            text=constants.images.columns.longitude,
+            cell_background_set=constants.images.columns.modified)
         col4 = Gtk.TreeViewColumn("Elevation", renderer,
-            text=constants.images.elevation,
-            cell_background_set=constants.images.modified)
+            text=constants.images.columns.elevation,
+            cell_background_set=constants.images.columns.modified)
 
-        col0.set_sort_column_id(constants.images.filename)
-        col1.set_sort_column_id(constants.images.datetime)
-        col2.set_sort_column_id(constants.images.latitude)
-        col3.set_sort_column_id(constants.images.longitude)
-        col4.set_sort_column_id(constants.images.elevation)
+        col0.set_sort_column_id(constants.images.columns.filename)
+        col1.set_sort_column_id(constants.images.columns.datetime)
+        col2.set_sort_column_id(constants.images.columns.latitude)
+        col3.set_sort_column_id(constants.images.columns.longitude)
+        col4.set_sort_column_id(constants.images.columns.elevation)
 
         tree = self.builder.get_object("treeview1")
         tree.append_column(col0)
@@ -765,8 +769,8 @@ class App(object):
             # Get the first selected picture
             p = pathlist[0]
             tree_iter = model.get_iter(p)
-            lat = model.get_value(tree_iter,constants.images.latitude)
-            lon = model.get_value(tree_iter,constants.images.longitude)
+            lat = model.get_value(tree_iter, constants.images.columns.latitude)
+            lon = model.get_value(tree_iter, constants.images.columns.longitude)
             if lat and lon:
                 self.add_marker_at(float(lat),float(lon))
                 self.go_to_marker()
@@ -807,17 +811,17 @@ class App(object):
                 i=0
                 for p in pathlist:
                     tree_iter = model.get_iter(p)
-                    filename = model[tree_iter][0]
-                    dt = model[tree_iter][7]
+                    filename = model[tree_iter][constants.images.columns.filename]
+                    dt = model[tree_iter][constants.images.columns.dtobject]
                     if dt:
                         lat, lon, ele = self.gpx.find_coordinates(dt)
                         if lat and lon:
                             #print "%s %.5f %.5f" % (filename, lat, lon)
                             # Modify the coordinates
-                            model[tree_iter][3] = "%.5f" % lat
-                            model[tree_iter][4] = "%.5f" % lon
-                            model[tree_iter][8] = "%.2f" % ele
-                            model[tree_iter][5] = True
+                            model[tree_iter][constants.images.columns.latitude] = "%.5f" % lat
+                            model[tree_iter][constants.images.columns.longitude] = "%.5f" % lon
+                            model[tree_iter][constants.images.columns.elevation] = "%.2f" % ele
+                            model[tree_iter][constants.images.columns.modified] = True
                             self.modified[filename] = {'latitude': lat, 'longitude': lon, 'elevation': ele}
                             i += 1
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
@@ -831,15 +835,16 @@ class App(object):
             i=0
             for p in pathlist:
                 tree_iter = model.get_iter(p)
-                filename = model[tree_iter][0]
+                filename = model[tree_iter][constants.images.columns.dtobject]
                 try:
-                    model[tree_iter][3] = "%.5f" % float(lat)
-                    model[tree_iter][4] = "%.5f" % float(lon)
-                    model[tree_iter][8] = "%.2f" % float(ele)
+                    model[tree_iter][constants.images.columns.latitude] = "%.5f" % float(lat)
+                    model[tree_iter][constants.images.columns.longitude] = "%.5f" % float(lon)
+                    model[tree_iter][constants.images.columns.elevation] = "%.2f" % float(ele)
                 except ValueError:  # could not convert to float
-                    model[tree_iter][3] = ''
-                    model[tree_iter][4] = ''
-                model[tree_iter][5] = True
+                    model[tree_iter][constants.images.columns.latitude] = ''
+                    model[tree_iter][constants.images.columns.longitude] = ''
+                    model[tree_iter][constants.images.columns.elevation] = ''
+                model[tree_iter][constants.images.columns.modified] = True
                 self.modified[filename] = {'latitude': lat, 'longitude': lon, 'elevation': ele}
                 i += 1
             self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
@@ -854,14 +859,14 @@ class App(object):
         if pathlist:
             for p in pathlist:
                 tree_iter = model.get_iter(p)
-                lat = model.get_value(tree_iter,3)
-                lon = model.get_value(tree_iter,4)
+                lat = model.get_value(tree_iter, constants.images.columns.latitude)
+                lon = model.get_value(tree_iter, constants.images.columns.longitude)
                 if lat or lon:
-                    filename = model[tree_iter][0]
-                    model[tree_iter][3] = ''
-                    model[tree_iter][4] = ''
-                    model[tree_iter][5] = True
-                    model[tree_iter][8] = ''
+                    filename = model[tree_iter][constants.images.columns.filename]
+                    model[tree_iter][constants.images.columns.latitude] = ''
+                    model[tree_iter][constants.images.columns.longitude] = ''
+                    model[tree_iter][constants.images.columns.elevation] = ''
+                    model[tree_iter][constants.images.columns.modified] = True
                     self.modified[filename] = {'latitude': '', 'longitude': '', 'altitude': ''}
                     i += 1
         self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
@@ -1265,14 +1270,14 @@ class App(object):
         model.foreach(callback, userdata)
 
     def set_track_color(self, model, path, tree_iter, userdata):
-        tracklayer = model.get_value(tree_iter,5)
+        tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
         tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
 
     def treeview_x_select_all(self, widget=None):
         page = self.builder.get_object('notebook1').get_current_page()
-        if page == 0:
+        if page == constants.notebook.pages.images:
             self.images_select_all()
-        elif page == 1:
+        elif page == constants.notebook.pages.tracks:
             self.treeview2_select_all()
 
     def about_box(self, widget=None):
@@ -1287,9 +1292,9 @@ class App(object):
             self.show_infobar("Cannot copy from multiple images. Select only one.")
         else:
             tree_iter = model.get_iter(pathlist[0])
-            lat = model.get_value(tree_iter,3)
-            lon = model.get_value(tree_iter,4)
-            ele = model.get_value(tree_iter,8)
+            lat = model.get_value(tree_iter, constants.images.columns.latitude)
+            lon = model.get_value(tree_iter, constants.images.columns.longitude)
+            ele = model.get_value(tree_iter, constants.images.columns.elevation)
             self.latlon_buffer = (lat, lon, ele)
             if lat and lon:
                 self.latlon_buffer = (lat, lon, '')
@@ -1299,7 +1304,8 @@ class App(object):
             self.show_infobar("Copied %s" % msg)
 
     def paste_tag(self, widget=None):
-        if self.builder.get_object('notebook1').get_current_page() != 0:
+        # Only do this if the images tab is active
+        if self.builder.get_object('notebook1').get_current_page() != constants.notebook.pages.images:
             return
         lat, lon, ele = self.latlon_buffer
         self.tag_selected(lat,lon,ele)
