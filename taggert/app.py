@@ -38,7 +38,6 @@ from gpxfile import GPXfile
 from polygon import Polygon
 import constants
 
-#GObject.threads_init()
 GtkClutter.init([])
 
 VERSION = 1.1
@@ -49,36 +48,22 @@ END    = Clutter.BinAlignment.END
 
 class App(object):
 
+    filelist_locked = False
     latlon_buffer = ('', '', '')
+    clicked_lat = 0.0
+    clicked_lon = 0.0
+    map_id = 'osm-mapnik'
+    bookmarks = {}
+    last_clicked_bookmark = None
+    modified = {}
+    show_tracks = True
+    gpx = GPXfile()
+    highlighted_tracks = []
+    timeout2_id = None
 
     def __init__(self, data_dir, args):
         self.data_dir = data_dir
         self.args = args
-        self.imagedir   = ''
-        self.filelist_locked = False
-        self.home_location = (51.50063, -0.12456, 12)  # lat, lon, zoom
-        self.clicked_lat = 0.0
-        self.clicked_lon = 0.0
-        self.marker_size = 18
-        self.map_id = 'osm-mapnik'
-        self.bookmarks = {}
-        self.last_clicked_bookmark = None
-        self.modified = {}
-        self.show_untagged_only = False
-        self.show_map_coords = True
-        self.show_tracks = True
-        self.show_elevation_column = False
-        self.gpx = GPXfile()
-        self.last_track_folder = None
-        self.track_highlight_color = Gdk.Color(0,0,65535)
-        self.track_default_color = Gdk.Color(65535,0,0)
-        self.marker_color = Gdk.Color(0,65535,0)
-        self.last_highlighted_track = None
-        self.highlighted_tracks = []
-        self.track_timezone = 'Europe/Amsterdam'
-        self.always_this_timezone = False
-        self.timeout2_id = None
-        self.pane_position = 600
 
     def main(self):
         self.read_settings()
@@ -140,6 +125,7 @@ class App(object):
         self.track_timezone = self.settings.get_value('track-timezone').get_string()
         self.always_this_timezone = self.settings.get_value('always-this-timezone').get_boolean()
         self.pane_position = self.settings.get_value('pane-position').get_int32()
+        self.marker_size = self.settings.get_value('marker-size').get_int32()
 
         # Colors
         self.marker_color = self.get_color_from_settings('marker-color')
@@ -183,6 +169,7 @@ class App(object):
         self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
         self.builder.get_object("paned1").set_position(self.pane_position)
         self.builder.get_object("paned1").connect('notify::position', self.paned1_handle_moved)
+        self.builder.get_object("adjustment2").set_value(self.marker_size)
 
     def setup_gui_signals(self):
 
@@ -669,6 +656,14 @@ class App(object):
 
     def map_add_marker(self, _widget):
         self.add_marker_at(self.clicked_lat, self.clicked_lon)
+
+    def redraw_marker(self):
+        try:
+            m = self.markerlayer.get_markers()[0]
+            lat, lon = (m.get_latitude(), m.get_longitude())
+            self.add_marker_at(lat,lon)
+        except IndexError:
+            pass
 
     def center_map_here(self, _widget):
         self.osm.center_on(self.clicked_lat, self.clicked_lon)
@@ -1260,10 +1255,14 @@ class App(object):
             self.markerlayer.get_markers()[0].set_color(self.clutter_color(self.marker_color))
             self.with_all_tracks_do(self.set_track_color)
             self.treeselect2_changed(self.builder.get_object("treeview2").get_selection())
+            self.marker_size = self.builder.get_object("adjustment2").get_value()
+            self.settings.set_value('marker-size', GLib.Variant('i', self.marker_size))
+            self.redraw_marker()
         else:
             self.builder.get_object("colorbutton1").set_color(self.marker_color)
             self.builder.get_object("colorbutton2").set_color(self.track_default_color)
             self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
+            self.builder.get_object("adjustment2").set_value(self.marker_size)
 
     def with_all_tracks_do (self, callback, userdata=None):
         model = self.builder.get_object("liststore2")
