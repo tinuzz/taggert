@@ -36,6 +36,7 @@ from pprint import pprint
 from iso8601 import parse_date as parse_xml_date
 from gpxfile import GPXfile
 from polygon import Polygon
+from tsettings import TSettings
 import constants
 
 GtkClutter.init([])
@@ -59,7 +60,6 @@ class App(object):
     show_tracks = True
     gpx = GPXfile()
     highlighted_tracks = []
-    timeout2_id = None
 
     def __init__(self, data_dir, args):
         self.data_dir = data_dir
@@ -84,7 +84,8 @@ class App(object):
         Gtk.main()
 
     def read_settings(self):
-        self.settings = Gio.Settings.new('com.tinuzz.taggert')
+        #self.settings = Gio.Settings.new('com.tinuzz.taggert')
+        self.settings = TSettings('com.tinuzz.taggert')
 
         v = self.settings.get_value('bookmarks-names')
         for i in range(v.n_children()):
@@ -124,7 +125,6 @@ class App(object):
         self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
         self.track_timezone = self.settings.get_value('track-timezone').get_string()
         self.always_this_timezone = self.settings.get_value('always-this-timezone').get_boolean()
-        self.pane_position = self.settings.get_value('pane-position').get_int32()
         self.marker_size = self.settings.get_value('marker-size').get_int32()
 
         # Colors
@@ -167,9 +167,10 @@ class App(object):
         self.builder.get_object("colorbutton2").set_color(self.track_default_color)
         self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
         self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
-        self.builder.get_object("paned1").set_position(self.pane_position)
-        self.builder.get_object("paned1").connect('notify::position', self.paned1_handle_moved)
         self.builder.get_object("adjustment2").set_value(self.marker_size)
+
+        # GSettings bindings
+        self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
 
     def setup_gui_signals(self):
 
@@ -1314,15 +1315,6 @@ class App(object):
         self.show_elevation_column = checked
         self.settings.set_value("show-elevation-column", GLib.Variant('b', checked))
         self.builder.get_object("treeview1").get_column(4).set_visible(checked)
-
-    def paned1_handle_moved(self, pane, _ignored):
-        if self.timeout2_id:
-            GLib.source_remove(self.timeout2_id)
-        self.timeout2_id = GLib.timeout_add_seconds(3, self.save_paned_position, pane)
-
-    def save_paned_position(self, pane):
-        self.settings.set_value("pane-position", GLib.Variant('i', pane.get_property('position')))
-        return False
 
     def float_to_fraction(self,value):
         return fractions.Fraction.from_float(value).limit_denominator(99999)
