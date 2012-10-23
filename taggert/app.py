@@ -118,7 +118,6 @@ class App(object):
             homeloc.get_child_value(2).get_int32(),
         )
 
-        self.show_map_coords = self.settings.get_value('show-map-coords').get_boolean()
         self.show_elevation_column = self.settings.get_value('show-elevation-column').get_boolean()
         self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
         self.imagedir = self.settings.get_value('last-image-dir').get_string()
@@ -157,7 +156,6 @@ class App(object):
         self.window.set_default_size(s.get_child_value(0).get_int32(), s.get_child_value(1).get_int32())
 
         self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
-        self.builder.get_object("checkmenuitem9").set_active(self.show_map_coords)
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
         self.builder.get_object("checkmenuitem3").set_active(self.show_elevation_column)
         self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
@@ -171,6 +169,7 @@ class App(object):
 
         # GSettings bindings
         self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
+        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
 
     def setup_gui_signals(self):
 
@@ -260,7 +259,7 @@ class App(object):
         self.osm.bin_layout_add(self.cbox, START, START)
         self.cbox.get_layout_manager().add(self.clabel, CENTER, CENTER)
         self.osm.connect('notify::width', lambda *ignore: self.cbox.set_size(self.osm.get_width(), 30))
-        if not self.show_map_coords:
+        if not self.builder.get_object("checkmenuitem9").get_active():
             self.cbox.hide()
 
         widget.connect("realize", self.handle_map_event)
@@ -961,11 +960,7 @@ class App(object):
                 pass
 
     def toggle_overlay(self, widget=None):
-        checked = self.builder.get_object("checkmenuitem9").get_active()
-        self.show_map_coords = checked
-        self.settings.set_value("show-map-coords", GLib.Variant('b', checked))
-        #box = self.osm.get_children()[0]
-        if checked:
+        if self.builder.get_object("checkmenuitem9").get_active():
             self.cbox.show()
         else:
             self.cbox.hide()
