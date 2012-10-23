@@ -118,7 +118,6 @@ class App(object):
             homeloc.get_child_value(2).get_int32(),
         )
 
-        self.show_elevation_column = self.settings.get_value('show-elevation-column').get_boolean()
         self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
         self.imagedir = self.settings.get_value('last-image-dir').get_string()
         self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
@@ -157,7 +156,6 @@ class App(object):
 
         self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
-        self.builder.get_object("checkmenuitem3").set_active(self.show_elevation_column)
         self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
@@ -170,6 +168,7 @@ class App(object):
         # GSettings bindings
         self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
         self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
+        self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
 
     def setup_gui_signals(self):
 
@@ -313,7 +312,7 @@ class App(object):
         tree.append_column(col3)
         tree.append_column(col4)
 
-        col4.set_visible(self.show_elevation_column)
+        col4.set_visible(self.builder.get_object("checkmenuitem3").get_active())
 
     def update_adjustment1(self):
         ms = self.map_sources[self.map_id]
@@ -1307,8 +1306,6 @@ class App(object):
 
     def toggle_elevation(self, widget=None):
         checked = self.builder.get_object("checkmenuitem3").get_active()
-        self.show_elevation_column = checked
-        self.settings.set_value("show-elevation-column", GLib.Variant('b', checked))
         self.builder.get_object("treeview1").get_column(4).set_visible(checked)
 
     def float_to_fraction(self,value):
