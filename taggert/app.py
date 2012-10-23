@@ -118,7 +118,6 @@ class App(object):
             homeloc.get_child_value(2).get_int32(),
         )
 
-        self.show_untagged_only = self.settings.get_value('show-untagged-only').get_boolean()
         self.imagedir = self.settings.get_value('last-image-dir').get_string()
         self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
         self.track_timezone = self.settings.get_value('track-timezone').get_string()
@@ -154,7 +153,6 @@ class App(object):
         s = self.settings.get_value('window-size')
         self.window.set_default_size(s.get_child_value(0).get_int32(), s.get_child_value(1).get_int32())
 
-        self.builder.get_object("checkmenuitem1").set_active(self.show_untagged_only)
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
         self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
@@ -167,8 +165,9 @@ class App(object):
 
         # GSettings bindings
         self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
-        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
+        self.settings.bind('show-untagged-only', self.builder.get_object("checkmenuitem1"), 'active')
         self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
+        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
 
     def setup_gui_signals(self):
 
@@ -333,8 +332,7 @@ class App(object):
 
     def populate_store1(self, widget=None):
 
-        self.show_untagged_only = self.builder.get_object("checkmenuitem1").get_active()
-        self.settings.set_value("show-untagged-only", GLib.Variant('b', self.show_untagged_only))
+        show_untagged_only = self.builder.get_object("checkmenuitem1").get_active()
         self.filelist_locked = True
         shown = 0
         notshown = 0
@@ -409,8 +407,8 @@ class App(object):
                                 except KeyError:
                                     imgele = ''
 
-                            if not self.show_untagged_only or imglat == '' or imglon == '' or data:
-                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj, imgele])
+                            if (not show_untagged_only) or imglat == '' or imglon == '' or data:
+                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj, str(imgele)])
                                 shown += 1
                             else:
                                 notshown += 1
@@ -816,7 +814,7 @@ class App(object):
                             model[tree_iter][constants.images.columns.longitude] = "%.5f" % lon
                             model[tree_iter][constants.images.columns.elevation] = "%.2f" % ele
                             model[tree_iter][constants.images.columns.modified] = True
-                            self.modified[filename] = {'latitude': lat, 'longitude': lon, 'elevation': ele}
+                            self.modified[filename] = {'latitude': "%.5f" % lat, 'longitude': "%.5f" % lon, 'elevation': "%.2f" % ele}
                             i += 1
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
             except IndexError:
@@ -829,7 +827,7 @@ class App(object):
             i=0
             for p in pathlist:
                 tree_iter = model.get_iter(p)
-                filename = model[tree_iter][constants.images.columns.dtobject]
+                filename = model[tree_iter][constants.images.columns.filename]
                 try:
                     model[tree_iter][constants.images.columns.latitude] = "%.5f" % float(lat)
                     model[tree_iter][constants.images.columns.longitude] = "%.5f" % float(lon)
@@ -839,7 +837,7 @@ class App(object):
                     model[tree_iter][constants.images.columns.longitude] = ''
                     model[tree_iter][constants.images.columns.elevation] = ''
                 model[tree_iter][constants.images.columns.modified] = True
-                self.modified[filename] = {'latitude': lat, 'longitude': lon, 'elevation': ele}
+                self.modified[filename] = {'latitude': "%.5f" % lat, 'longitude': "%.5f" % lon, 'elevation': "%.2f" % ele}
                 i += 1
             self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
 
@@ -861,7 +859,7 @@ class App(object):
                     model[tree_iter][constants.images.columns.longitude] = ''
                     model[tree_iter][constants.images.columns.elevation] = ''
                     model[tree_iter][constants.images.columns.modified] = True
-                    self.modified[filename] = {'latitude': '', 'longitude': '', 'altitude': ''}
+                    self.modified[filename] = {'latitude': '', 'longitude': '', 'elevation': ''}
                     i += 1
         self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
 
@@ -883,7 +881,7 @@ class App(object):
         model.foreach(self.treestore_save_modified, None)
 
         # If we only want to see untagged images, repopulate the treeview
-        if self.show_untagged_only:
+        if self.builder.get_object("checkmenuitem1").get_active():
             self.populate_store1()
         self.show_infobar("%d image%s saved" % (self.savecounter, '' if self.savecounter == 1 else 's'))
 
