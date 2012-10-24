@@ -203,6 +203,11 @@ class App(object):
             "menuitem22_activate": self.set_timezone_dialog,
             "menuitem23_activate": self.settings_dialog,
             "menuitem25_activate": self.treeview_x_select_all,
+            "menuitem27_activate": self.go_to_marker,
+            "menuitem28_activate": self.go_to_image,
+            "menuitem30_activate": self.map_zoom_in,
+            "menuitem31_activate": self.map_zoom_out,
+            "menuitem33_activate": self.add_bookmark_dialog,
             "combobox1_changed": self.combobox_changed,
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
@@ -701,6 +706,7 @@ class App(object):
         self.builder.get_object("entry2").set_text("%.5f" % lat)
         self.builder.get_object("entry3").set_text("%.5f" % lon)
         dialog = self.builder.get_object("dialog1")
+        self.builder.get_object("entry1").grab_focus()
         response = dialog.run()
         dialog.hide()
         if response == Gtk.ResponseType.OK:
@@ -728,7 +734,7 @@ class App(object):
             entry.destroy()
 
         # Now add bookmarks as menuitems, sorted by name
-        for bm_id, bm in sorted(self.bookmarks.items(), key=lambda (k,v): (v["name"],k)):
+        for bm_id, bm in sorted(self.bookmarks.items(), key=lambda (k,v): (v["name"].lower(),k)):
         #for bm_id, bm in self.bookmarks.items():
             item = Gtk.MenuItem()
             item.set_label(bm['name'])
@@ -1315,6 +1321,5 @@ class App(object):
     def update_window_size(self, window, userdata):
         size = window.get_size()
         if size != self.window_size:
-            pprint(size)
             self.window_size =  size
             self.settings.set_value('window-size', GLib.Variant('(ii)', size))
