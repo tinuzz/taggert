@@ -151,7 +151,10 @@ class App(object):
 
         # Restore window size
         s = self.settings.get_value('window-size')
-        self.window.set_default_size(s.get_child_value(0).get_int32(), s.get_child_value(1).get_int32())
+        w = s.get_child_value(0).get_int32()
+        h = s.get_child_value(1).get_int32()
+        self.window_size = (w,h)
+        self.window.set_default_size(w,h)
 
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
         self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
@@ -173,6 +176,7 @@ class App(object):
 
         handlers = {
             "window1_delete_event": self.quit,
+            "window1_configure_event": self.update_window_size,
             "imagemenuitem1_activate": self.go_home,
             "imagemenuitem2_activate": self.select_dir,
             "imagemenuitem3_activate": self.save_all,
@@ -323,9 +327,8 @@ class App(object):
         adj.set_upper(max_zoom)
         adj.set_value(cur_zoom)
 
-    def quit(self, _window, _event=None):
+    def quit(self, _window=None, _event=None):
         if self.save_modified_dialog():
-            self.save_settings()
             Gtk.main_quit()
         else:
             return False
@@ -931,10 +934,6 @@ class App(object):
         # return False to cancel the timer
         return False
 
-    def save_settings(self):
-        value = self.builder.get_object("window1").get_size()
-        self.settings.set_value('window-size', GLib.Variant('(ii)', value))
-
     def combobox1_set_map_id(self, string):
         model = self.builder.get_object("liststore3")
         model.foreach(self.find_and_set_map_id, self.map_id)
@@ -1212,7 +1211,6 @@ class App(object):
 
         always = self.builder.get_object("checkbutton1").get_active()
 
-        #print "%s/%s" % (pre, post)
         return ("%s%s" % (pre, '/' + post if post else ''), always)
 
     def timezone_split(self, tz):
@@ -1313,3 +1311,10 @@ class App(object):
     def update_gtk(self):
         while Gtk.events_pending():
             Gtk.main_iteration()
+
+    def update_window_size(self, window, userdata):
+        size = window.get_size()
+        if size != self.window_size:
+            pprint(size)
+            self.window_size =  size
+            self.settings.set_value('window-size', GLib.Variant('(ii)', size))
