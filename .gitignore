@@ -27,3 +27,5 @@ pip-log.txt
 .mr.developer.cfg
 
 mapviewer.py
+gschemas.compiled
+taggert/data/taggert.glade.bak
