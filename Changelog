@@ -1,0 +1,35 @@
+v1.1 - 24 Oct 2012
+------------------
+
+- Restructure directory layout and add Python distutils and Debian packaging
+- Add an icon and a .desktop file
+- Disable Google map sources by default
+- Feature: copy/paste coordinates with CTRL-C/CTRL-V
+- Add two mapsources: Mapbox Streets and (just for fun) Stamen Watercolor
+- Handle elevation/altitude in geo-tags
+- Screen redrawing during time-consuming operations, to make it look snappier
+- Marker size is now configurable
+- Bookmarks are now properly sorted by name
+- Add many menu-accelerators (keyboard shortcuts)
+- Make functions from some action buttons available under view menu too
+
+v1.0 - 15 Oct 2012
+------------------
+
+First public release with basic functionality:
+- Show map, choose from different map providers
+- Map functions: zoom in/out, coordinate overlay
+- Show list of JPG images with EXIF dates and geo-tags
+- Optionally show only images that don't have geo-tags
+- Show image preview
+- Place/drag marker on the map and use it to geo-tag images
+- Store 'home location' as starting point for the map
+- Use the marker to create bookmarks for frequently used locations
+- Import GPX files and show tracks on the map
+- Track images from tracks
+- Remove tracks from map view
+- Delete tags from images
+- Configurable colors for marker, tracks and selected tracks
+- Use GSettings to store GUI options and application preferences
+- Context menus for image operations, tracks and bookmarks
+- Use pytz timezone database to calculate image/track offsets
