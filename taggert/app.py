@@ -724,8 +724,9 @@ class App(object):
                 continue
             entry.destroy()
 
-        # Now add bookmarks as menuitems
-        for bm_id, bm in self.bookmarks.items():
+        # Now add bookmarks as menuitems, sorted by name
+        for bm_id, bm in sorted(self.bookmarks.items(), key=lambda (k,v): (v["name"],k)):
+        #for bm_id, bm in self.bookmarks.items():
             item = Gtk.MenuItem()
             item.set_label(bm['name'])
             item.set_name(bm_id)
