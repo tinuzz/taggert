@@ -929,6 +929,7 @@ class App(object):
             model[tree_iter][5] = False  # saved => not modified
             del self.modified[fl]
             self.savecounter += 1
+            self.update_gtk()
 
     def show_infobar(self, text, timeout=5):
         self.builder.get_object("label9").set_text(text)
