@@ -12,9 +12,16 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""tdata module, defines the TData class"""
+
 from gi.repository import GObject
 
 class TData(GObject.GObject):
+    """
+    Subclass GObject for storing runtime variables. Properties of this object
+    can be bound to GSettings for transparent persistence, and handlers can
+    be connected to property change notifications, for updating the GUI, etc.
+    """
 
     imagedir           = GObject.property(type=str)
     lasttrackfolder    = GObject.property(type=str)
@@ -24,9 +31,15 @@ class TData(GObject.GObject):
     trackwidth         = GObject.property(type=int)
 
     def __init__(self):
+        """Constructor, does nothing special"""
         GObject.GObject.__init__(self)
 
     def connect_signals(self, handlers):
+        """
+        Connect specified handler to notify signal for specified properties.
+        Argument is a dictionary, where the key is the property name and the
+        value is the signal handler for the change notification.
+        """
         for prop, handler in handlers.items():
             self.connect("notify::%s" % prop, handler)
 
