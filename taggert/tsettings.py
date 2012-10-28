@@ -12,13 +12,24 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""tsettings module, defines the TSettings class"""
+
 from gi.repository import Gio
 
 class TSettings(Gio.Settings):
+    """
+    Subclass Gio.Settings to add some convenience methods
+    """
 
     def __init___(self, schema):
+        """Constructor, does nothing special"""
         Gio.Settings.__init__(self, schema)
 
-    # Convenience method, taken from GottenGeography
     def bind(self, key, widget, prop=None, flags=Gio.SettingsBindFlags.DEFAULT):
+        """
+        Bind GObject properties to GSettings key/values, using default flags.
+        The GSettings key is used as the name of the property if not specified
+        explicitly. This is merely a convenience method, that was taken from
+        GottenGeography.
+        """
         Gio.Settings.bind(self, key, widget, prop or key, flags)
