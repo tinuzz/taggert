@@ -146,7 +146,9 @@ class App(object):
         self.builder.add_from_file(os.path.join(self.data_dir, "taggert.glade"))
         self.window = self.builder.get_object("window1")
 
-        # GSettings bindings
+        # GSettings bindings. Object properties from several Gtk widgets, as well as
+        # specific properties from the self.data (TData) object are bound to the
+        # corresponding GSettings.
         self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
         self.settings.bind('show-untagged-only', self.builder.get_object("checkmenuitem1"), 'active')
         self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
