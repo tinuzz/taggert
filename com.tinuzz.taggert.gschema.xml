@@ -25,6 +25,10 @@
       <default>18</default>
       <summary>Use this size for the marker on the map. </summary>
     </key>
+    <key type="i" name="track-line-width">
+      <default>3</default>
+      <summary>Use this stroke width for tracks on the map. </summary>
+    </key>
     <key type="(ddi)" name="home-location">
       <default>(51.50063, -0.12456, 12)</default>
       <summary>Use these coordinates and zoom level as home location.</summary>

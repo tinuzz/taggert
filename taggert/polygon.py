@@ -17,9 +17,9 @@ class Polygon(Champlain.PathLayer):
     (53.529201, -113.499324, 1000.0)
     """
 
-    def __init__(self):
+    def __init__(self, width=3):
         Champlain.PathLayer.__init__(self)
-        self.set_stroke_width(4)
+        self.set_stroke_width(width)
 
     def append_point(self, latitude, longitude, elevation=None):
         """Simplify appending a point onto a polygon."""
