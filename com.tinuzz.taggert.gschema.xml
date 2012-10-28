@@ -45,6 +45,10 @@
       <default>false</default>
       <summary>Wether to only show untagged images in the file list</summary>
     </key>
+    <key type="b" name="show-image-markers">
+      <default>true</default>
+      <summary>Wether to show markers on the map for images with geotags.</summary>
+    </key>
     <key type="a{ss}" name="bookmarks-names">
       <default>{"bookmark1": "Eiffel Tower", "bookmark2": "Taj Mahal"}</default>
       <summary>The names of user's bookmarks</summary>

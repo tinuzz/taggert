@@ -953,16 +953,6 @@ Unchecked means 'ask every time'</property>
       </object>
     </child>
     <child>
-      <object class="GtkMenuItem" id="menuitem10">
-        <property name="use_action_appearance">False</property>
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <property name="label" translatable="yes">Remove</property>
-        <property name="use_underline">True</property>
-        <signal name="activate" handler="menuitem10_activate" swapped="no"/>
-      </object>
-    </child>
-    <child>
       <object class="GtkMenuItem" id="menuitem11">
         <property name="use_action_appearance">False</property>
         <property name="visible">True</property>
@@ -980,6 +970,23 @@ Unchecked means 'ask every time'</property>
         <property name="label" translatable="yes">Select none</property>
         <property name="use_underline">True</property>
         <signal name="activate" handler="menuitem12_activate" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="menuitem34">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem10">
+        <property name="use_action_appearance">False</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Remove</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="menuitem10_activate" swapped="no"/>
       </object>
     </child>
   </object>
@@ -1360,6 +1367,23 @@ Unchecked means 'ask every time'</property>
                       </object>
                     </child>
                     <child>
+                      <object class="GtkCheckMenuItem" id="checkmenuitem3">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Elevation column</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="checkmenuitem3_toggled" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparatorMenuItem" id="menuitem36">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkCheckMenuItem" id="checkmenuitem9">
                         <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
@@ -1380,13 +1404,13 @@ Unchecked means 'ask every time'</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkCheckMenuItem" id="checkmenuitem3">
+                      <object class="GtkCheckMenuItem" id="menuitem35">
                         <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Elevation column</property>
+                        <property name="label" translatable="yes">Image markers</property>
                         <property name="use_underline">True</property>
-                        <signal name="toggled" handler="checkmenuitem3_toggled" swapped="no"/>
+                        <signal name="toggled" handler="menuitem35_toggled" swapped="no"/>
                       </object>
                     </child>
                     <child>
