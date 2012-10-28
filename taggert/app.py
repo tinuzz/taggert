@@ -35,9 +35,11 @@ from pprint import pprint
 
 from iso8601 import parse_date as parse_xml_date
 from gpxfile import GPXfile
-from polygon import Polygon
-from tsettings import TSettings
+import polygon
+import tsettings
+import imagemarker
 import constants
+import tdata
 
 GtkClutter.init([])
 
@@ -64,6 +66,7 @@ class App(object):
     def __init__(self, data_dir, args):
         self.data_dir = data_dir
         self.args = args
+        self.data = tdata.TData()
 
     def main(self):
         self.read_settings()
@@ -75,6 +78,7 @@ class App(object):
         idx = self.init_timezonepre()
         self.init_combobox2and3(idx)
         self.setup_gui_signals()
+        self.setup_data_signals()
         self.populate_store1()
         self.update_adjustment1()
         self.reload_bookmarks()
@@ -84,8 +88,7 @@ class App(object):
         Gtk.main()
 
     def read_settings(self):
-        #self.settings = Gio.Settings.new('com.tinuzz.taggert')
-        self.settings = TSettings('com.tinuzz.taggert')
+        self.settings = tsettings.TSettings('com.tinuzz.taggert')
 
         v = self.settings.get_value('bookmarks-names')
         for i in range(v.n_children()):
@@ -118,12 +121,6 @@ class App(object):
             homeloc.get_child_value(2).get_int32(),
         )
 
-        self.imagedir = self.settings.get_value('last-image-dir').get_string()
-        self.last_track_folder = self.settings.get_value('last-track-folder').get_string()
-        self.track_timezone = self.settings.get_value('track-timezone').get_string()
-        self.always_this_timezone = self.settings.get_value('always-this-timezone').get_boolean()
-        self.marker_size = self.settings.get_value('marker-size').get_int32()
-
         # Colors
         self.marker_color = self.get_color_from_settings('marker-color')
         self.track_default_color = self.get_color_from_settings('normal-track-color')
@@ -149,6 +146,19 @@ class App(object):
         self.builder.add_from_file(os.path.join(self.data_dir, "taggert.glade"))
         self.window = self.builder.get_object("window1")
 
+        # GSettings bindings
+        self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
+        self.settings.bind('show-untagged-only', self.builder.get_object("checkmenuitem1"), 'active')
+        self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
+        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
+        self.settings.bind('show-image-markers', self.builder.get_object("menuitem35"), 'active')
+        self.settings.bind('last-image-dir', self.data, 'imagedir')
+        self.settings.bind('last-track-folder', self.data, 'lasttrackfolder')
+        self.settings.bind('track-line-width', self.data, 'trackwidth')
+        self.settings.bind('marker-size', self.data, 'markersize')
+        self.settings.bind('track-timezone', self.data, 'tracktimezone')
+        self.settings.bind('always-this-timezone', self.data, 'alwaysthistimezone')
+
         # Restore window size
         s = self.settings.get_value('window-size')
         w = s.get_child_value(0).get_int32()
@@ -157,20 +167,15 @@ class App(object):
         self.window.set_default_size(w,h)
 
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
-        self.builder.get_object("checkbutton1").set_active(self.always_this_timezone)
+        self.builder.get_object("checkbutton1").set_active(self.data.alwaysthistimezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
         self.builder.get_object("colorbutton1").set_color(self.marker_color)
         self.builder.get_object("colorbutton2").set_color(self.track_default_color)
         self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
         self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
-        self.builder.get_object("adjustment2").set_value(self.marker_size)
-
-        # GSettings bindings
-        self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
-        self.settings.bind('show-untagged-only', self.builder.get_object("checkmenuitem1"), 'active')
-        self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
-        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
+        self.builder.get_object("adjustment2").set_value(self.data.markersize)
+        self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
 
     def setup_gui_signals(self):
 
@@ -208,6 +213,7 @@ class App(object):
             "menuitem30_activate": self.map_zoom_in,
             "menuitem31_activate": self.map_zoom_out,
             "menuitem33_activate": self.add_bookmark_dialog,
+            "menuitem35_toggled": self.toggle_imagemarkers,
             "combobox1_changed": self.combobox_changed,
             "combobox2_changed": self.combobox2_changed,
             "checkmenuitem1_toggled": self.populate_store1,
@@ -234,6 +240,14 @@ class App(object):
         }
         self.builder.connect_signals(handlers)
 
+    def setup_data_signals(self):
+        # data.property to notify::property handler
+        handlers = {
+            "markersize": self.redraw_marker,
+            "trackwidth": lambda *ignore: self.with_all_tracks_do(self.update_track_appearance),
+        }
+        self.data.connect_signals(handlers)
+
     def setup_map(self):
         widget = GtkChamplain.Embed()
 
@@ -249,6 +263,10 @@ class App(object):
         # A marker layer
         self.markerlayer = Champlain.MarkerLayer()
         self.osm.add_layer(self.markerlayer)
+
+        # An image layer
+        self.imagelayer = Champlain.MarkerLayer()
+        self.osm.add_layer(self.imagelayer)
 
         # A map scale
         scale = Champlain.Scale()
@@ -339,19 +357,19 @@ class App(object):
             return False
 
     def populate_store1(self, widget=None):
-
         show_untagged_only = self.builder.get_object("checkmenuitem1").get_active()
         self.filelist_locked = True
         shown = 0
         notshown = 0
 
         try:
-            #print "Going to scan %s" % self.imagedir
             store = self.builder.get_object("liststore1")
             store.clear()
-            if self.imagedir:
-                for fl in os.listdir(self.imagedir):
-                    fname = os.path.join(self.imagedir, fl)
+            if self.data.imagedir:
+                # Clear all image markers
+                self.imagelayer.remove_all()
+                for fl in os.listdir(self.data.imagedir):
+                    fname = os.path.join(self.data.imagedir, fl)
                     if not os.path.isdir(fname):
                         if os.path.splitext(fname)[1].lower() == ".jpg":
                             data = None
@@ -381,7 +399,7 @@ class App(object):
                                 rot = '1'
                             # Get GPS info
                             try:
-                                data =  self.modified[fl]
+                                data = self.modified[fl]
                                 imglat = data['latitude']
                                 modf = True
                             except KeyError:
@@ -393,7 +411,7 @@ class App(object):
                                 except KeyError:
                                     imglat = ''
                             try:
-                                data =  self.modified[fl]
+                                data = self.modified[fl]
                                 imglon = data['longitude']
                             except KeyError:
                                 try:
@@ -416,13 +434,16 @@ class App(object):
                                     imgele = ''
 
                             if (not show_untagged_only) or imglat == '' or imglon == '' or data:
-                                store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj, str(imgele)])
+                                treeiter = store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj, str(imgele)])
                                 shown += 1
+                                if imglat and imglon:
+                                    self.add_imagemarker_at(treeiter, fl, imglat, imglon)
                             else:
                                 notshown += 1
         finally:
             self.filelist_locked = False
 
+        self.raise_layers()
         msg = "%d images" % shown
         if notshown > 0:
             msg = "%s, %d already tagged images not shown" % (msg, notshown)
@@ -556,7 +577,7 @@ class App(object):
                 tree_iter = model.get_iter(p)
                 value = model.get_value(tree_iter,0)
                 orientation = model.get_value(tree_iter,2)
-                filename = os.path.join(self.imagedir, value)
+                filename = os.path.join(self.data.imagedir, value)
 
                 pb = GdkPixbuf.Pixbuf.new_from_file_at_size(filename, 300, 200)
                 if orientation == '6':
@@ -581,7 +602,6 @@ class App(object):
                     pb = pb.scale_simple(nw, nh, 2)
 
                 preview = self.builder.get_object("image1")
-                #preview.set_from_pixbuf(pb)
                 preview.set_from_pixbuf(pb)
 
 
@@ -602,14 +622,13 @@ class App(object):
                 (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, "Select", Gtk.ResponseType.OK))
             chooser.set_create_folders(False)
 
-            if self.imagedir and os.path.isdir(self.imagedir):
-                chooser.set_current_folder_uri('file://%s' % self.imagedir)
+            if self.data.imagedir and os.path.isdir(self.data.imagedir):
+                chooser.set_current_folder_uri('file://%s' % self.data.imagedir)
 
             response = chooser.run()
             chooser.hide()
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-                self.imagedir = chooser.get_filename()
-                self.settings.set_value("last-image-dir", GLib.Variant('s', self.imagedir))
+                self.data.set_property("imagedir", chooser.get_filename())
                 self.modified = {}
                 self.populate_store1 ()
             chooser.destroy()
@@ -650,19 +669,26 @@ class App(object):
             menu.popup(None, None, None, None, event.button, event.time)
             self.clicked_lat, self.clicked_lon = self.osm.y_to_latitude(event.y), self.osm.x_to_longitude(event.x)
 
-    def add_marker_at(self, lat, lon, zoom=None):
+    def add_marker_at(self, lat, lon, _zoom=None):
         self.markerlayer.remove_all()
         point = Champlain.Point()
         point.set_location(lat, lon)
         point.set_color(self.clutter_color(self.marker_color))
-        point.set_size(self.marker_size)
+        point.set_size(self.data.get_property("markersize"))
         point.set_draggable(True)
         self.markerlayer.add_marker(point)
+
+    def add_imagemarker_at(self, treeiter, filename, lat, lon):
+        point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
+        point.set_color(self.clutter_color(Gdk.color_parse("green")))
+        point.set_size(12)
+        #point.set_draggable(True)
+        self.imagelayer.add_marker(point)
 
     def map_add_marker(self, _widget):
         self.add_marker_at(self.clicked_lat, self.clicked_lon)
 
-    def redraw_marker(self):
+    def redraw_marker(self, _data=None, _prop=None):
         try:
             m = self.markerlayer.get_markers()[0]
             lat, lon = (m.get_latitude(), m.get_longitude())
@@ -735,12 +761,10 @@ class App(object):
 
         # Now add bookmarks as menuitems, sorted by name
         for bm_id, bm in sorted(self.bookmarks.items(), key=lambda (k,v): (v["name"].lower(),k)):
-        #for bm_id, bm in self.bookmarks.items():
             item = Gtk.MenuItem()
             item.set_label(bm['name'])
             item.set_name(bm_id)
             item.connect("button-press-event", self.handle_bookmark_click)
-            #item.connect("activate", self.go_to_bookmark)
             menu.append(item)
             item.show()
 
@@ -824,6 +848,7 @@ class App(object):
                             model[tree_iter][constants.images.columns.longitude] = "%.5f" % lon
                             model[tree_iter][constants.images.columns.elevation] = "%.2f" % ele
                             model[tree_iter][constants.images.columns.modified] = True
+                            self.move_imagemarker(tree_iter, filename, lat, lon)
                             self.modified[filename] = {'latitude': "%.5f" % lat, 'longitude': "%.5f" % lon, 'elevation': "%.2f" % ele}
                             i += 1
                 self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
@@ -847,6 +872,7 @@ class App(object):
                     model[tree_iter][constants.images.columns.longitude] = ''
                     model[tree_iter][constants.images.columns.elevation] = ''
                 model[tree_iter][constants.images.columns.modified] = True
+                self.move_imagemarker(tree_iter, filename, lat, lon)
                 self.modified[filename] = {'latitude': "%.5f" % lat, 'longitude': "%.5f" % lon, 'elevation': "%.2f" % ele}
                 i += 1
             self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
@@ -869,6 +895,7 @@ class App(object):
                     model[tree_iter][constants.images.columns.longitude] = ''
                     model[tree_iter][constants.images.columns.elevation] = ''
                     model[tree_iter][constants.images.columns.modified] = True
+                    self.remove_imagemarker(filename)
                     self.modified[filename] = {'latitude': '', 'longitude': '', 'elevation': ''}
                     i += 1
         self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
@@ -898,7 +925,7 @@ class App(object):
     def treestore_save_modified(self, model, path, tree_iter, userdata):
         fl = model.get_value(tree_iter,0)
         if model.get_value(tree_iter,5): # "modified"
-            fname = os.path.join(self.imagedir, fl)
+            fname = os.path.join(self.data.imagedir, fl)
             metadata = pyexiv2.ImageMetadata(fname)
             metadata.read()
             try:
@@ -975,7 +1002,7 @@ class App(object):
         i = 0
         for trk in self.gpx.gpxfiles[idx]['tracks']:
             # Create a tracklayer for each track
-            tracklayer = Polygon()
+            tracklayer = polygon.Polygon(width=self.data.get_property("trackwidth"))
             tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
             t0 = trk["segments"][0]["points"][0]["time"]
             tx = trk["segments"][-1]["points"][-1]["time"]
@@ -994,12 +1021,11 @@ class App(object):
             if not self.show_tracks:
                 tracklayer.hide()
             i += 1
+            self.raise_layers()
             self.update_gtk()
 
-        self.markerlayer.raise_top()
         # Store the directory of the file for next time
-        self.last_track_folder = os.path.dirname(filename)
-        self.settings.set_value("last-track-folder", GLib.Variant('s', self.last_track_folder))
+        self.data.set_property('lasttrackfolder', os.path.dirname(filename))
         return i
 
     def init_treeview2(self):
@@ -1032,20 +1058,20 @@ class App(object):
                 (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
             chooser.set_select_multiple(True)
             chooser.add_filter(filefilter)
-            if self.last_track_folder and os.path.isdir(self.last_track_folder):
-                chooser.set_current_folder_uri('file://%s' % self.last_track_folder)
+            if self.data.lasttrackfolder and os.path.isdir(self.data.lasttrackfolder):
+                chooser.set_current_folder_uri('file://%s' % self.data.lasttrackfolder)
             response = chooser.run()
             chooser.hide()
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
                 filenames = chooser.get_filenames()
-                if not self.always_this_timezone:
+                if not self.data.alwaysthistimezone:
                     self.set_timezone_dialog()
                 i = 0
                 self.builder.get_object('notebook1').set_current_page(1)
                 self.update_gtk()
                 for filename in filenames:
                     # self.process_gpx returns the number of tracks
-                    i += self.process_gpx(filename, self.track_timezone)
+                    i += self.process_gpx(filename, self.data.tracktimezone)
                 if (len(filenames) == 1):
                     msg = os.path.basename(filename)
                 else:
@@ -1057,15 +1083,20 @@ class App(object):
         dialog = self.builder.get_object ("dialog2")
         resp2 = dialog.run()
         dialog.hide()
-        self.track_timezone, self.always_this_timezone = self.get_timezonedialog_result()
-        self.settings.set_value("track-timezone", GLib.Variant('s', self.track_timezone))
-        self.settings.set_value("always-this-timezone", GLib.Variant('b', self.always_this_timezone))
+        self.data.tracktimezone, self.data.alwaysthistimezone = self.get_timezonedialog_result()
 
     def toggle_tracks(self, widget=None):
         checked = self.builder.get_object("checkmenuitem2").get_active()
         self.show_tracks = checked
         model = self.builder.get_object("liststore2")
         model.foreach(self.show_tracklayer, checked)
+
+    def toggle_imagemarkers(self, widget=None):
+        checked = self.builder.get_object("menuitem35").get_active()
+        if checked:
+            self.imagelayer.show()
+        else:
+            self.imagelayer.hide()
 
     def show_tracklayer(self, model, path, tree_iter, show):
         # The tracklayer object is in the 5th column
@@ -1146,7 +1177,7 @@ class App(object):
                     #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
                     tracklayer.raise_top()
                     self.highlighted_tracks.append(tracklayer)
-        self.markerlayer.raise_top()
+        self.raise_layers()
 
     def treeview2_select_all(self, widget=None):
         self.builder.get_object("treeview2").get_selection().select_all()
@@ -1156,7 +1187,7 @@ class App(object):
 
     def init_timezonepre(self):
         store = self.builder.get_object("liststore4")
-        cur_a, _ignore = self.timezone_split(self.track_timezone)
+        cur_a, _ignore = self.timezone_split(self.data.tracktimezone)
 
         zones = {}
         i = 0
@@ -1189,7 +1220,7 @@ class App(object):
     def combobox2_changed(self, combobox):
         model = combobox.get_model()
         active = combobox.get_active_iter()
-        _ignore, cur_b = self.timezone_split(self.track_timezone)
+        _ignore, cur_b = self.timezone_split(self.data.tracktimezone)
         i = 0
         cur_idx = 0
         if active != None:
@@ -1245,31 +1276,37 @@ class App(object):
         response = dialog.run()
         dialog.hide()
         if response == Gtk.ResponseType.OK:
+            # set values locally
             self.marker_color = self.builder.get_object("colorbutton1").get_color()
             self.track_default_color = self.builder.get_object("colorbutton2").get_color()
             self.track_highlight_color = self.builder.get_object("colorbutton3").get_color()
+            self.data.set_property("markersize", self.builder.get_object("adjustment2").get_value())
+            self.data.set_property("trackwidth", self.builder.get_object("adjustment3").get_value())
+
+            # save settings
             self.settings.set_value('marker-color', GLib.Variant('(iii)', self.color_tuple(self.marker_color)))
             self.settings.set_value('normal-track-color', GLib.Variant('(iii)', self.color_tuple(self.track_default_color)))
             self.settings.set_value('selected-track-color', GLib.Variant('(iii)', self.color_tuple(self.track_highlight_color)))
+
+            # update GUI appearance
             self.markerlayer.get_markers()[0].set_color(self.clutter_color(self.marker_color))
-            self.with_all_tracks_do(self.set_track_color)
             self.treeselect2_changed(self.builder.get_object("treeview2").get_selection())
-            self.marker_size = self.builder.get_object("adjustment2").get_value()
-            self.settings.set_value('marker-size', GLib.Variant('i', self.marker_size))
-            self.redraw_marker()
         else:
+            # Reset preferences window
             self.builder.get_object("colorbutton1").set_color(self.marker_color)
             self.builder.get_object("colorbutton2").set_color(self.track_default_color)
             self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
-            self.builder.get_object("adjustment2").set_value(self.marker_size)
+            self.builder.get_object("adjustment2").set_value(self.data.markersize)
+            self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
 
     def with_all_tracks_do (self, callback, userdata=None):
         model = self.builder.get_object("liststore2")
         model.foreach(callback, userdata)
 
-    def set_track_color(self, model, path, tree_iter, userdata):
+    def update_track_appearance(self, model, path, tree_iter, userdata):
         tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
         tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
+        tracklayer.set_stroke_width(self.data.trackwidth)
 
     def treeview_x_select_all(self, widget=None):
         page = self.builder.get_object('notebook1').get_current_page()
@@ -1324,3 +1361,32 @@ class App(object):
         if size != self.window_size:
             self.window_size =  size
             self.settings.set_value('window-size', GLib.Variant('(ii)', size))
+
+    def raise_layers(self):
+        # Move markerlayer and then imagelayer to the top
+        # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
+        #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
+        self.markerlayer.raise_top()
+        self.imagelayer.raise_top()
+
+    def imagemarker_clicked(self, marker, clutterevent, userdata=None):
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        # Control-key used? Expand or reduce selection.
+        if clutterevent.get_state() & Clutter.ModifierType.CONTROL_MASK:
+            if treeselect.iter_is_selected(marker.treeiter):
+                treeselect.unselect_iter(marker.treeiter)
+            else:
+                treeselect.select_iter(marker.treeiter)
+        else:
+            treeselect.unselect_all()
+            treeselect.select_iter(marker.treeiter)
+
+    def move_imagemarker(self, tree_iter, filename, lat, lon):
+        self.remove_imagemarker(filename)
+        self.add_imagemarker_at(tree_iter, filename, lat, lon)
+
+    def remove_imagemarker(self, filename):
+        for m in self.imagelayer.get_markers():
+            if m.filename == filename:
+                m.destroy()
+                break
