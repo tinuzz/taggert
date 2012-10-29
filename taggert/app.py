@@ -34,7 +34,7 @@ from gi.repository import Gdk
 from pprint import pprint
 
 from iso8601 import parse_date as parse_xml_date
-from gpxfile import GPXfile
+import gpxfile
 import polygon
 import tsettings
 import imagemarker
@@ -50,6 +50,7 @@ CENTER = Clutter.BinAlignment.CENTER
 END    = Clutter.BinAlignment.END
 
 class App(object):
+    """Main application class"""
 
     filelist_locked = False
     latlon_buffer = ('', '', '')
@@ -60,20 +61,28 @@ class App(object):
     last_clicked_bookmark = None
     modified = {}
     show_tracks = True
-    gpx = GPXfile()
+    gpx = gpxfile.GPXfile()
     highlighted_tracks = []
 
     def __init__(self, data_dir, args):
+        """
+        Constructor, initializes command line arguments and TData object
+        """
         self.data_dir = data_dir
         self.args = args
         self.data = tdata.TData()
 
     def main(self):
+        """
+        Application entry point, initializes the GUI and starts the Gtk main loop
+        """
         self.read_settings()
         self.setup_gui()
+        self.window.set_title('Taggert')
         self.init_map_sources()
-        self.init_treeview1()
         self.setup_map()
+        self.window.show_all()
+        self.init_treeview1()
         self.init_combobox1()
         idx = self.init_timezonepre()
         self.init_combobox2and3(idx)
@@ -82,12 +91,14 @@ class App(object):
         self.populate_store1()
         self.update_adjustment1()
         self.reload_bookmarks()
-        self.window.set_title('Taggert')
-        self.window.show_all()
         self.init_treeview2()
         Gtk.main()
 
     def read_settings(self):
+        """
+        Initializes a TSettings object and processes all settings that are not
+        bound to (and thus automatically stored in) the TData object.
+        """
         self.settings = tsettings.TSettings('com.tinuzz.taggert')
 
         v = self.settings.get_value('bookmarks-names')
@@ -127,6 +138,9 @@ class App(object):
         self.track_highlight_color = self.get_color_from_settings('selected-track-color')
 
     def get_color_from_settings(self, key):
+        """
+        Returns a Gdk.Color using a 3-tuple of RGB values from TSettings
+        """
         color = self.settings.get_value(key)
         return Gdk.Color(
             color.get_child_value(0).get_int32(),
@@ -135,13 +149,23 @@ class App(object):
         )
 
     def clutter_color (self, gdkcolor):
+        """
+        Convert a Gdk.Color into a Clutter.Color
+        """
         return Clutter.Color.new(
             *[x / 256 for x in [gdkcolor.red, gdkcolor.green, gdkcolor.blue, 65535]])
 
     def color_tuple (self, gdkcolor):
+        """
+        Return a 3-tuple of RGB values from a Gdk.Color
+        """
         return (gdkcolor.red, gdkcolor.green, gdkcolor.blue)
 
     def setup_gui(self):
+        """
+        Initialize the GUI with Gtk.Builder, bind certain widget
+        parameter values to TSettings and initialize other widget parameters
+        """
         self.builder = Gtk.Builder()
         self.builder.add_from_file(os.path.join(self.data_dir, "taggert.glade"))
         self.window = self.builder.get_object("window1")
@@ -180,7 +204,9 @@ class App(object):
         self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
 
     def setup_gui_signals(self):
-
+        """
+        Set up all event handlers for the Gtk.Builder GUI
+        """
         handlers = {
             "window1_delete_event": self.quit,
             "window1_configure_event": self.update_window_size,
@@ -243,7 +269,10 @@ class App(object):
         self.builder.connect_signals(handlers)
 
     def setup_data_signals(self):
-        # data.property to notify::property handler
+        """
+        Set up all handlers for notify::property signals from TData object,
+        using a dictionary that maps TData properties to handler methods.
+        """
         handlers = {
             "markersize": self.redraw_marker,
             "trackwidth": lambda *ignore: self.with_all_tracks_do(self.update_track_appearance),
@@ -251,6 +280,9 @@ class App(object):
         self.data.connect_signals(handlers)
 
     def setup_map(self):
+        """
+        Initialize the map, add layers and setup signal handlers
+        """
         widget = GtkChamplain.Embed()
 
         box = self.builder.get_object("box2")
@@ -293,20 +325,28 @@ class App(object):
         widget.connect("button-release-event", self.handle_map_event)
         self.osm.connect("layer-relocated", self.handle_map_event)
         widget.connect("button-press-event", self.handle_map_mouseclick)
+
+        # This signal doesn't seem to occur (at all):
         self.osm.connect("notify::zoom", self.on_map_zoom_changed)
 
         self.go_home()
 
     def init_combobox1(self):
+        """
+        Initialize the map source chooser
+        """
         combobox = self.builder.get_object("combobox1")
         renderer = Gtk.CellRendererText()
         combobox.pack_start(renderer, True)
         combobox.add_attribute(renderer, "text", 1)
 
-        self.combobox1_set_map_id(self.map_id)
+        self.combobox1_set_map_id()
         #combobox.set_active(0)
 
     def init_treeview1(self):
+        """
+        Initialize the treeview displaying the list of images
+        """
         self.builder.get_object("liststore1").set_sort_column_id(constants.images.columns.filename,
                                                                  Gtk.SortType.ASCENDING)
         renderer = Gtk.CellRendererText()
@@ -343,6 +383,10 @@ class App(object):
         col4.set_visible(self.builder.get_object("checkmenuitem3").get_active())
 
     def update_adjustment1(self):
+        """
+        Update the Gtk.Adjustment that controls the zoom widget, using the map
+        source for minimum and maximum values
+        """
         ms = self.map_sources[self.map_id]
         cur_zoom = self.osm.get_zoom_level()
         min_zoom = ms.get_min_zoom_level()
@@ -353,12 +397,19 @@ class App(object):
         adj.set_value(cur_zoom)
 
     def quit(self, _window=None, _event=None):
+        """
+        Quit the Gtk main loop and the application
+        """
         if self.save_modified_dialog():
             Gtk.main_quit()
         else:
             return False
 
     def populate_store1(self, widget=None):
+        """
+        Populate a liststore with images, reading them from a filesystem
+        directory, reading EXIF information and adding a 'modified' flag
+        """
         show_untagged_only = self.builder.get_object("checkmenuitem1").get_active()
         self.filelist_locked = True
         shown = 0
@@ -452,6 +503,10 @@ class App(object):
         self.statusbar.push(0, msg)
 
     def init_map_sources(self):
+        """
+        Initialize a list of map sources and setup Champlain map source chains
+        for all of them
+        """
         self.map_sources = {}
         self.map_sources_names = {}
 
@@ -560,6 +615,11 @@ class App(object):
             self.map_id = 'osm-mapnik'
 
     def combobox_changed(self, combobox):
+        """
+        Handler for 'changed' event from map source chooser, changes the
+        actual map source on the ChamplainView, stores the chosen value
+        in TSettings and updates the zoom widget
+        """
         model = combobox.get_model()
         active = combobox.get_active_iter()
         if active != None:
@@ -569,6 +629,10 @@ class App(object):
             self.update_adjustment1()
 
     def treeselect_changed (self, treeselect):
+        """
+        Handler for 'changed' event on the TreeSelection of the images list,
+        loads a preview of the currently selected image
+        """
         if self.filelist_locked:
             return
         if treeselect:
@@ -606,8 +670,11 @@ class App(object):
                 preview = self.builder.get_object("image1")
                 preview.set_from_pixbuf(pb)
 
-
     def save_modified_dialog(self):
+        """
+        Displays a MessageDialog, offering to save any unsaved changes and
+        handle the result
+        """
         if self.modified:
             dialog = self.builder.get_object('messagedialog1')
             result = dialog.run()
@@ -619,6 +686,10 @@ class App(object):
         return True
 
     def select_dir(self, widget):
+        """
+        Display a FileChooserDialog to select a new image folder and store the
+        result in TData object
+        """
         if self.save_modified_dialog():
             chooser = Gtk.FileChooserDialog("Select image folder", self.window, Gtk.FileChooserAction.SELECT_FOLDER,
                 (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, "Select", Gtk.ResponseType.OK))
@@ -636,15 +707,25 @@ class App(object):
             chooser.destroy()
 
     def go_to_location(self, lat, lon, zoom=None):
+        """
+        Center the map view on the specified coordinates and change the zoom
+        level if requested
+        """
         self.osm.center_on(lat, lon)
         if zoom:
             self.osm.set_zoom_level(zoom)
 
     def go_home(self, _widget=None):
+        """
+        Move the marker to the user's home location and show it on the map
+        """
         self.add_marker_at(*self.home_location)
         self.go_to_location(*self.home_location)
 
     def go_to_marker(self, _widget=None):
+        """
+        Center the map view on the current location of the marker
+        """
         try:
             m = self.markerlayer.get_markers()[0]
             lat, lon = (m.get_latitude(), m.get_longitude())
@@ -653,12 +734,20 @@ class App(object):
             pass
 
     def latlon_to_text(self,lat,lon):
+        """
+        Return a formatted string for a pair of coordinates
+        """
         return "%s %.5f, %s %.5f" % (
                 'N' if lat >= 0 else 'S', abs(lat),
                 'E' if lon >= 0 else 'W', abs(lon)
             )
 
     def handle_map_event(self, _widget, _ignore=None):
+        """
+        Handler for several map events that indicate that the center of the
+        map has moved, changes the coordinates displayed in the map overlay
+        and updates the zoom widget
+        """
         lat = self.osm.get_center_latitude()
         lon = self.osm.get_center_longitude()
         text = self.latlon_to_text(lat,lon)
@@ -666,12 +755,19 @@ class App(object):
         self.update_adjustment1()
 
     def handle_map_mouseclick(self, _widget, event):
+        """
+        Handler for right-click event on the map, opens the map context menu
+        and stores the coordinates of the clicked location
+        """
         if event.button == 3:
             menu = self.builder.get_object("menu6")
             menu.popup(None, None, None, None, event.button, event.time)
             self.clicked_lat, self.clicked_lon = self.osm.y_to_latitude(event.y), self.osm.x_to_longitude(event.x)
 
     def add_marker_at(self, lat, lon, _zoom=None):
+        """
+        Reset the marker on the map to the specified coordinates
+        """
         self.markerlayer.remove_all()
         point = Champlain.Point()
         point.set_location(lat, lon)
@@ -681,6 +777,9 @@ class App(object):
         self.markerlayer.add_marker(point)
 
     def add_imagemarker_at(self, treeiter, filename, lat, lon):
+        """
+        Place an ImageMarker on the map at the specified coordinates
+        """
         point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
         point.set_color(self.clutter_color(Gdk.color_parse("green")))
         point.set_size(12)
@@ -688,9 +787,16 @@ class App(object):
         self.imagelayer.add_marker(point)
 
     def map_add_marker(self, _widget):
+        """
+        Reset the marker on the map to the location that was last
+        right-clicked
+        """
         self.add_marker_at(self.clicked_lat, self.clicked_lon)
 
     def redraw_marker(self, _data=None, _prop=None):
+        """
+        Redraw the marker on the map, for when its size or color should change
+        """
         try:
             m = self.markerlayer.get_markers()[0]
             lat, lon = (m.get_latitude(), m.get_longitude())
@@ -699,18 +805,31 @@ class App(object):
             pass
 
     def center_map_here(self, _widget):
+        """
+        Center the map view on the location that was last right-clicked
+        """
         self.osm.center_on(self.clicked_lat, self.clicked_lon)
         #self.osm.go_to(self.clicked_lat, self.clicked_lon)
 
     def map_zoom_in(self, widget=None, event=None):
+        """
+        Zoom in on the map view and update the zoom widget
+        """
         self.osm.zoom_in()
         self.update_adjustment1()
 
     def map_zoom_out(self, widget=None, event=None):
+        """
+        Zoom out from the map view and update the zoom widget
+        """
         self.osm.zoom_out()
         self.update_adjustment1()
 
     def adjust_zoom(self, adj, _map=None):
+        """
+        Set the zoom level of the map view to the value of the zoom widget's
+        Gtk.Adjustment
+        """
         zoom = adj.get_value()
         cur_zoom = self.osm.get_zoom_level()
         if zoom != cur_zoom:
@@ -718,10 +837,17 @@ class App(object):
             self.update_adjustment1()
 
     def on_map_zoom_changed(self):
-        print (self.osm.get_zoom_level())
+        """
+        Handler for the "notify::zoom" signal from the map view, updates the
+        zoom widget.
+        """
         self.update_adjustment1()
 
     def add_bookmark_dialog(self, widget):
+        """
+        Open a dialog offering to add a bookmark for the current marker
+        location and store the result
+        """
         try:
             m = self.markerlayer.get_markers()[0]
             lat, lon = (m.get_latitude(), m.get_longitude())
@@ -750,6 +876,11 @@ class App(object):
         self.save_bookmarks()
 
     def reload_bookmarks(self):
+        """
+        Reload the bookmarks menu by first removing all entries after the
+        first SeparatorMenuItem and then recreating menuitems from all
+        bookmarks, after sorting the list case-insensitively by name
+        """
         # First remove all bookmarks, i.e. all MenuItems after the first separator
         menu = self.builder.get_object("menu5")
         sep_found = False
@@ -771,6 +902,9 @@ class App(object):
             item.show()
 
     def save_bookmarks(self):
+        """
+        Save bookmarks to TSettings
+        """
         names = {}
         latitudes = {}
         longitudes = {}
@@ -786,11 +920,19 @@ class App(object):
         self.settings.set_value("bookmarks-longitudes", v3)
 
     def go_to_bookmark(self, widget):
+        """
+        Reset the marker to the specified bookmark's coordinates and center
+        the map view on it
+        """
         bm_id = widget.get_name()
         self.add_marker_at(self.bookmarks[bm_id]['latitude'], self.bookmarks[bm_id]['longitude'])
         self.go_to_marker()
 
     def go_to_image(self, widget):
+        """
+        If the first selected image in the list is tagged, reset the marker to
+        it and center the map view on it
+        """
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
         if pathlist:
@@ -804,6 +946,11 @@ class App(object):
                 self.go_to_marker()
 
     def handle_bookmark_click(self, widget, event):
+        """
+        Handler for 'button-press-event' signal from bookmark menu item, open
+        a context pop-up if it's a right-click, go to the selected bookmark
+        otherwise
+        """
         if event.button == 3: # right click
             self.last_clicked_bookmark = widget
             popup = self.builder.get_object("menu7")
@@ -813,12 +960,18 @@ class App(object):
             self.go_to_bookmark(widget)
 
     def delete_bookmark(self, widget):
+        """
+        Delete the bookmark that was last right-clicked on
+        """
         bm_id = self.last_clicked_bookmark.get_name()
         self.last_clicked_bookmark.destroy()
         del self.bookmarks[bm_id]
         self.save_bookmarks()
 
     def tag_selected_from_marker(self, widget):
+        """
+        Add a geotag using the marker's location to all selected images
+        """
         try:
             m = self.markerlayer.get_markers()[0]
             lat, lon = (m.get_latitude(), m.get_longitude())
@@ -828,6 +981,10 @@ class App(object):
             pass
 
     def tag_selected_from_track(self, widget):
+        """
+        If any tracks are available, add a geotag using coordinates from the
+        tracks to all selected images
+        """
         # Any tracks available?
         if not len(self.gpx.gpxfiles):
             self.show_infobar ("No tracks loaded, cannot tag images")
@@ -858,6 +1015,10 @@ class App(object):
                 pass
 
     def tag_selected(self, lat, lon, ele):
+        """
+        Add a geotag with specified coordinates and elevation to all selected
+        images
+        """
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
         if pathlist:
@@ -880,6 +1041,10 @@ class App(object):
             self.show_infobar ("Tagged %d image%s" % (i, '' if i == 1 else 's'))
 
     def delete_tag_from_selected(self, widget):
+        """
+        If the images list is currently visible, remove any geotags from all
+        selected images
+        """
         # Don't do this out of sight
         if self.builder.get_object('notebook1').get_current_page() != 0:
             return
@@ -903,6 +1068,10 @@ class App(object):
         self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
 
     def dms_to_decimal(self, degrees, minutes, seconds, sign=' '):
+        """
+        Return a decimal representation of a coordinate specified in degrees,
+        minutes and seconds
+        """
         return (-1 if sign[0] in 'SWsw' else 1) * (
             float(degrees)        +
             float(minutes) / 60   +
@@ -910,11 +1079,19 @@ class App(object):
         )
 
     def decimal_to_dms(self, decimal):
+        """
+        Return a list of fractions representing degrees, minutes and seconds
+        of a coordinate specified in a decimal value
+        """
         remainder, degrees = modf(abs(decimal))
         remainder, minutes = modf(remainder * 60)
         return [self.float_to_fraction(n) for n in (degrees, minutes, remainder * 60)]
 
     def save_all(self, widget=None):
+        """
+        Save all modified images, repopulate the images list with only untagged
+        images if so desired
+        """
         model = self.builder.get_object('treeview1').get_model()
         self.savecounter = 0
         model.foreach(self.treestore_save_modified, None)
@@ -925,6 +1102,10 @@ class App(object):
         self.show_infobar("%d image%s saved" % (self.savecounter, '' if self.savecounter == 1 else 's'))
 
     def treestore_save_modified(self, model, path, tree_iter, userdata):
+        """
+        For all modified images, read the metadata from the file, update it
+        with our changes and write it back to the file
+        """
         fl = model.get_value(tree_iter,0)
         if model.get_value(tree_iter,5): # "modified"
             fname = os.path.join(self.data.imagedir, fl)
@@ -961,20 +1142,35 @@ class App(object):
             self.update_gtk()
 
     def show_infobar(self, text, timeout=5):
+        """
+        Show the specified text in the infobar and hide the infobar after the
+        specified amount of time
+        """
         self.builder.get_object("label9").set_text(text)
         self.builder.get_object("infobar1").show()
         GLib.timeout_add_seconds(timeout, self.hide_infobar)
 
     def hide_infobar(self, widget=None):
+        """
+        Hide the infobar
+        """
         self.builder.get_object("infobar1").hide()
         # return False to cancel the timer
         return False
 
-    def combobox1_set_map_id(self, string):
+    def combobox1_set_map_id(self):
+        """
+        Iterate over the map source chooser liststore and activate the current
+        map source
+        """
         model = self.builder.get_object("liststore3")
         model.foreach(self.find_and_set_map_id, self.map_id)
 
     def find_and_set_map_id(self, model, path, tree_iter, string):
+        """
+        For the specified map source chooser entry, match the map_id against
+        the currently selected map_id, and activate the entry if it matches
+        """
         map_id = model.get_value(tree_iter,0)
         if map_id == string:
             self.builder.get_object("combobox1").set_active_iter(tree_iter)
@@ -982,23 +1178,35 @@ class App(object):
         return False
 
     def set_home_location(self, widget=None):
-            try:
-                m = self.markerlayer.get_markers()[0]
-                lat, lon = (m.get_latitude(), m.get_longitude())
-                zoom = self.osm.get_zoom_level()
-                self.home_location = (lat, lon, zoom)
-                self.settings.set_value("home-location", GLib.Variant('(ddi)', (lat, lon, zoom)))
-                self.show_infobar ("Set home location to %.5f, %.5f at zoomlevel %d" % (lat, lon, zoom))
-            except IndexError:
-                pass
+        """
+        Set the home location from the location of the marker
+        """
+        try:
+            m = self.markerlayer.get_markers()[0]
+            lat, lon = (m.get_latitude(), m.get_longitude())
+            zoom = self.osm.get_zoom_level()
+            self.home_location = (lat, lon, zoom)
+            self.settings.set_value("home-location", GLib.Variant('(ddi)', (lat, lon, zoom)))
+            self.show_infobar ("Set home location to %.5f, %.5f at zoomlevel %d" % (lat, lon, zoom))
+        except IndexError:
+            pass
 
     def toggle_overlay(self, widget=None):
+        """
+        Handler for the 'toggled' signal from a checkmenuitem, shows or hides the
+        coordinates overlay on the map accordingly
+        """
         if self.builder.get_object("checkmenuitem9").get_active():
             self.cbox.show()
         else:
             self.cbox.hide()
 
     def process_gpx(self, filename, tz):
+        """
+        Import a GPX file draw all the tracks in it on the map, using a
+        different Polygon for each track, and add the track to the liststore
+        for the tracks list
+        """
         store = self.builder.get_object("liststore2")
         idx = self.gpx.import_gpx(filename, tz)
         i = 0
@@ -1031,6 +1239,9 @@ class App(object):
         return i
 
     def init_treeview2(self):
+        """
+        Initialize the tracks list
+        """
         self.builder.get_object("liststore2").set_sort_column_id(1,  Gtk.SortType.ASCENDING)
         renderer = Gtk.CellRendererText()
         #renderer.set_property('cell-background', 'yellow')
@@ -1051,49 +1262,65 @@ class App(object):
         tree.append_column(col3)
 
     def open_gpx(self, widget=None):
-            filefilter = Gtk.FileFilter()
-            filefilter.set_name("GPX files")
-            filefilter.add_pattern('*.gpx')
-            filefilter.add_pattern('*.GPX')
+        """
+        Display a FileChooserDialog for selecting one or more GPX files to
+        open. Process the result, asking for the timezone of the images if
+        necessary
+        """
+        filefilter = Gtk.FileFilter()
+        filefilter.set_name("GPX files")
+        filefilter.add_pattern('*.gpx')
+        filefilter.add_pattern('*.GPX')
 
-            chooser = Gtk.FileChooserDialog("Open GPX file", self.window, Gtk.FileChooserAction.OPEN,
-                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-            chooser.set_select_multiple(True)
-            chooser.add_filter(filefilter)
-            if self.data.lasttrackfolder and os.path.isdir(self.data.lasttrackfolder):
-                chooser.set_current_folder_uri('file://%s' % self.data.lasttrackfolder)
-            response = chooser.run()
-            chooser.hide()
-            if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
-                filenames = chooser.get_filenames()
-                if not self.data.alwaysthistimezone:
-                    self.set_timezone_dialog()
-                i = 0
-                self.builder.get_object('notebook1').set_current_page(1)
-                self.update_gtk()
-                for filename in filenames:
-                    # self.process_gpx returns the number of tracks
-                    i += self.process_gpx(filename, self.data.tracktimezone)
-                if (len(filenames) == 1):
-                    msg = os.path.basename(filename)
-                else:
-                    msg = "%d files" % len(filenames)
-                self.show_infobar ("%d %stracks added from '%s'" % (i, 'hidden ' if not self.show_tracks else '', msg))
-            chooser.destroy()
+        chooser = Gtk.FileChooserDialog("Open GPX file", self.window, Gtk.FileChooserAction.OPEN,
+            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+        chooser.set_select_multiple(True)
+        chooser.add_filter(filefilter)
+        if self.data.lasttrackfolder and os.path.isdir(self.data.lasttrackfolder):
+            chooser.set_current_folder_uri('file://%s' % self.data.lasttrackfolder)
+        response = chooser.run()
+        chooser.hide()
+        if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
+            filenames = chooser.get_filenames()
+            if not self.data.alwaysthistimezone:
+                self.set_timezone_dialog()
+            i = 0
+            self.builder.get_object('notebook1').set_current_page(1)
+            self.update_gtk()
+            for filename in filenames:
+                # self.process_gpx returns the number of tracks
+                i += self.process_gpx(filename, self.data.tracktimezone)
+            if (len(filenames) == 1):
+                msg = os.path.basename(filename)
+            else:
+                msg = "%d files" % len(filenames)
+            self.show_infobar ("%d %stracks added from '%s'" % (i, 'hidden ' if not self.show_tracks else '', msg))
+        chooser.destroy()
 
     def set_timezone_dialog(self, widget=None):
+        """
+        Display a dialog window for choosing a timezone and optionally setting
+        to always use this timezone from now on. Store the result in TData.
+        """
         dialog = self.builder.get_object ("dialog2")
         resp2 = dialog.run()
         dialog.hide()
         self.data.tracktimezone, self.data.alwaysthistimezone = self.get_timezonedialog_result()
 
     def toggle_tracks(self, widget=None):
+        """
+        Iterate over all tracks and show or hide the corresponding tracklayer
+        """
         checked = self.builder.get_object("checkmenuitem2").get_active()
         self.show_tracks = checked
         model = self.builder.get_object("liststore2")
         model.foreach(self.show_tracklayer, checked)
 
     def toggle_imagemarkers(self, widget=None):
+        """
+        Handler for the 'toggled' signal from a checkmenuitem, shows or hides
+        imagemarkers on the map accordingly
+        """
         checked = self.builder.get_object("menuitem35").get_active()
         if checked:
             self.imagelayer.show()
@@ -1101,20 +1328,31 @@ class App(object):
             self.imagelayer.hide()
 
     def show_tracklayer(self, model, path, tree_iter, show):
-        # The tracklayer object is in the 5th column
-        tracklayer = model.get_value(tree_iter,5)
+        """
+        Look up a tracklayer in the specified model and show or hide it as
+        specified
+        """
+        tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
         if show:
             tracklayer.show()
         else:
             tracklayer.hide()
 
     def handle_treeview1_click(self, widget, event):
+        """
+        Handler for right-click event on the images list, opens the context
+        menu
+        """
         if event.button == 3: # right click
             popup = self.builder.get_object("menu9")
             popup.popup(None, widget, None, None, event.button, event.time)
             return True
 
     def handle_treeview2_click(self, widget, event):
+        """
+        Handler for right-click event on the tracks list, opens the context
+        menu
+        """
         if event.button == 3: # right click
             #treeview = self.builder.get_object("treeview2")
             #selection = treeview.get_selection()
@@ -1131,6 +1369,10 @@ class App(object):
             return True
 
     def view_selected_track(self, widget):
+        """
+        Get the composed bounding box for all selected tracks and make sure it
+        is visible on the map
+        """
         treeselect = self.builder.get_object("treeview2").get_selection()
         model, pathlist = treeselect.get_selected_rows()
         i = 0
@@ -1148,6 +1390,9 @@ class App(object):
             self.show_infobar ("Showing %d tracks" % i)
 
     def remove_selected_track(self, widget):
+        """
+        Remove the selected tracks from the tracks list and from the map
+        """
         treeselect = self.builder.get_object("treeview2").get_selection()
         model, pathlist = treeselect.get_selected_rows()
         if pathlist:
@@ -1162,6 +1407,10 @@ class App(object):
             self.show_infobar("%d tracks removed" % len(pathlist))
 
     def treeselect2_changed(self, treeselect):
+        """
+        Handler for 'changed' event on the TreeSelection of the tracks list,
+        highlights the selected track(s) on the map
+        """
         if treeselect:
             # First, reset the color of the previously selected tracks
             for t in self.highlighted_tracks:
@@ -1182,12 +1431,22 @@ class App(object):
         self.raise_layers()
 
     def treeview2_select_all(self, widget=None):
+        """
+        Select all tracks
+        """
         self.builder.get_object("treeview2").get_selection().select_all()
 
     def treeview2_select_none(self, widget=None):
+        """
+        Select no tracks
+        """
         self.builder.get_object("treeview2").get_selection().unselect_all()
 
     def init_timezonepre(self):
+        """
+        Initialize the liststore for the prefix combobox for timezone selection
+        from pytz.common_timezones
+        """
         store = self.builder.get_object("liststore4")
         cur_a, _ignore = self.timezone_split(self.data.tracktimezone)
 
@@ -1207,6 +1466,9 @@ class App(object):
         return cur_idx
 
     def init_combobox2and3(self, idx=0):
+        """
+        Initialize both timezone selection comboboxes
+        """
         combobox = self.builder.get_object("combobox2")
         renderer = Gtk.CellRendererText()
         combobox.pack_start(renderer, True)
@@ -1220,6 +1482,11 @@ class App(object):
         combobox.add_attribute(renderer, "text", 0)
 
     def combobox2_changed(self, combobox):
+        """
+        Handler for the 'changed' event on the timezone prefix selector, loads
+        the liststore of the timezone postfix selector with corresponding
+        values from pytz.common_timezones
+        """
         model = combobox.get_model()
         active = combobox.get_active_iter()
         _ignore, cur_b = self.timezone_split(self.data.tracktimezone)
@@ -1239,6 +1506,9 @@ class App(object):
         self.builder.get_object("combobox3").set_active(cur_idx)
 
     def get_timezonedialog_result(self):
+        """
+        Return the results from the timezone selection dialog
+        """
         model1  = self.builder.get_object("liststore4")
         model2  = self.builder.get_object("liststore5")
 
@@ -1254,9 +1524,11 @@ class App(object):
         return ("%s%s" % (pre, '/' + post if post else ''), always)
 
     def timezone_split(self, tz):
-        # return a 2-tuple containing the timezone in two parts
-        # 'Europe/Amsterdam' => ('Europe', 'Amsterdam')
-        # 'UTC'              => ('UTC', '')
+        """
+        Return a 2-tuple containing the timezone in two parts
+        'Europe/Amsterdam' => ('Europe', 'Amsterdam')
+        'UTC'              => ('UTC', '')
+        """
         if tz.find('/') >= 0:
             a,b = tz.split('/', 1)
         else:
@@ -1265,15 +1537,28 @@ class App(object):
         return (a,b)
 
     def images_select_all_from_camera(self, widget=None):
+        """
+        Select all images from the same camera. Not implemented.
+        """
         return
 
     def images_select_all(self, widget=None):
+        """
+        Select all images
+        """
         self.builder.get_object("treeview1").get_selection().select_all()
 
     def images_select_none(self, widget=None):
+        """
+        Select no images
+        """
         self.builder.get_object("treeview1").get_selection().unselect_all()
 
     def settings_dialog(self, widget=None):
+        """
+        Display the settings dialog and process the response, storing the
+        settings in TData or writing them to TSettings and updating the GUI
+        """
         dialog = self.builder.get_object("dialog3")
         response = dialog.run()
         dialog.hide()
@@ -1302,15 +1587,26 @@ class App(object):
             self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
 
     def with_all_tracks_do (self, callback, userdata=None):
+        """
+        Iterate over all tracks and call the specified function on each of them
+        """
         model = self.builder.get_object("liststore2")
         model.foreach(callback, userdata)
 
     def update_track_appearance(self, model, path, tree_iter, userdata):
+        """
+        Update the color and stroke width of a track on the map according to
+        current settings
+        """
         tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
         tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
         tracklayer.set_stroke_width(self.data.trackwidth)
 
     def treeview_x_select_all(self, widget=None):
+        """
+        Select all images or tracks, depending on which page is currently
+        visible
+        """
         page = self.builder.get_object('notebook1').get_current_page()
         if page == constants.notebook.pages.images:
             self.images_select_all()
@@ -1318,11 +1614,17 @@ class App(object):
             self.treeview2_select_all()
 
     def about_box(self, widget=None):
+        """
+        Display the about box
+        """
         d = self.builder.get_object('aboutdialog1')
         d.run()
         d.hide()
 
     def copy_tag(self, widget=None):
+        """
+        Copy coordinates from a single selected image to a buffer
+        """
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
         if len(pathlist) > 1:
@@ -1341,6 +1643,10 @@ class App(object):
             self.show_infobar("Copied %s" % msg)
 
     def paste_tag(self, widget=None):
+        """
+        If the images list is visible, paste the contents of the coordinate
+        buffer to all currently selected images
+        """
         # Only do this if the images tab is active
         if self.builder.get_object('notebook1').get_current_page() != constants.notebook.pages.images:
             return
@@ -1348,30 +1654,51 @@ class App(object):
         self.tag_selected(lat,lon,ele)
 
     def toggle_elevation(self, widget=None):
+        """
+        Handler for the 'toggled' signal from a checkmenuitem, shows or hides the
+        elevation column in the images list accordingly
+        """
         checked = self.builder.get_object("checkmenuitem3").get_active()
         self.builder.get_object("treeview1").get_column(4).set_visible(checked)
 
     def float_to_fraction(self,value):
+        """
+        Return a Fraction for a floating point value
+        """
         return fractions.Fraction.from_float(value).limit_denominator(99999)
 
     def update_gtk(self):
+        """
+        Run Gtk main iterations for as long as events are pending
+        """
         while Gtk.events_pending():
             Gtk.main_iteration()
 
     def update_window_size(self, window, userdata):
+        """
+        Handler for 'configure_event' on the main window, saves the window size
+        to TSettings
+        """
         size = window.get_size()
         if size != self.window_size:
-            self.window_size =  size
+            self.window_size = size
             self.settings.set_value('window-size', GLib.Variant('(ii)', size))
 
     def raise_layers(self):
-        # Move markerlayer and then imagelayer to the top
-        # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
-        #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
+        """
+        Move markerlayer and then imagelayer to the top
+        raise_top() is deprecated since v1.10 but this set_child_above_sibling()
+        construct doesn't seem to work:
+        tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
+        """
         self.markerlayer.raise_top()
         self.imagelayer.raise_top()
 
     def imagemarker_clicked(self, marker, clutterevent, userdata=None):
+        """
+        Handler for the 'clicked' signal from an ImageMarker, selects the
+        corresponding image in the images list
+        """
         treeselect = self.builder.get_object("treeview1").get_selection()
         # Control-key used? Expand or reduce selection.
         if clutterevent.get_state() & Clutter.ModifierType.CONTROL_MASK:
@@ -1384,11 +1711,34 @@ class App(object):
             treeselect.select_iter(marker.treeiter)
 
     def move_imagemarker(self, tree_iter, filename, lat, lon):
+        """
+        Move the ImageMarker for the specified image by first removing it and
+        then adding a new one.
+        TODO: ImageMarkers can be moved by just giving them a new location with
+        ImageMarker.set_location(lat, lon)
+        so:
+            m = get_imagemarker_by_filename(filename)
+            if m:
+                m.set_location(lat, lon)
+        """
         self.remove_imagemarker(filename)
         self.add_imagemarker_at(tree_iter, filename, lat, lon)
 
     def remove_imagemarker(self, filename):
+        """
+        Find an ImageMarker by filename and remove (destroy) it
+        """
         for m in self.imagelayer.get_markers():
             if m.filename == filename:
                 m.destroy()
                 break
+
+    def get_imagemarker_by_filename(self, filename):
+        """
+        Find an ImageMarker by filename and return it. Return None if no marker
+        could be found
+        """
+        for m in self.imagelayer.get_markers():
+            if m.filename == filename:
+                return m
+        return None
