@@ -20,6 +20,7 @@ Features
 --------
 
 * Geo-tagging manually and with the help of GPS tracks from GPX files
+* When tagging from GPX tracks, elevation (altitude) is also handled
 * Offers different free maps to work on, like different Openstreetmap maps,
   MapQuest maps and satellite images and maps-for-free
 * Shows a preview of selected images, so you know what you're doing
@@ -71,6 +72,14 @@ When all prerequisites are installed, you should be able to run Taggert:
 
     ./taggert
 
+Packaging for Debian or Ubuntu
+------------------------------
+
+Taggert comes with a 'debian' directory that contains the necessary information
+for creating Debian and/or Ubuntu packages. If you have a working pbuilder
+setup, running 'pdebuild' inside the root of your clone should get you a
+working package.
+
 Credits
 -------
 
@@ -107,11 +116,9 @@ license can be found in the 'COPYING' file and on the web [6].
 Roadmap
 -------
 
-* Altitude support. So far, EXIF tags dealing with altitude are completely ignored.
 * Support for more GPS file formats. Only GPX is supported now.
 * Editing and exporting GPS tracks
 * Tools to correct DateTime tags on images, to fix deviations in your camera's clock.
-* Packaging for Debian and maybe Ubuntu
 * Python 3 support
 
 Robert Bruce Park, who created GottenGeography, also created GObject
@@ -127,3 +134,6 @@ rewritten to use that, rather than pyexiv2.
 History
 -------
 2012-10-15   Released version 1.0
+2012-10-24   Released version 1.1
+
+See 'Changelog' for a summary of changes for each version.
