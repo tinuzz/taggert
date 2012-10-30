@@ -44,12 +44,12 @@ def decimal_to_dms(decimal):
     remainder, minutes = modf(remainder * 60)
     return [float_to_fraction(n) for n in (degrees, minutes, remainder * 60)]
 
-def clutter_color (gdkcolor):
+def clutter_color (gdkcolor, opacity=256):
     """
     Convert a Gdk.Color into a Clutter.Color
     """
     return Clutter.Color.new(
-        *[x / 256 for x in [gdkcolor.red, gdkcolor.green, gdkcolor.blue, 65535]])
+        *[x / 256 for x in [gdkcolor.red, gdkcolor.green, gdkcolor.blue, (256 * opacity) -1]])
 
 def color_tuple (gdkcolor):
     """

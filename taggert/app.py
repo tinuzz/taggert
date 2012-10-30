@@ -64,6 +64,7 @@ class App(object):
     show_tracks = True
     gpx = gpxfile.GPXfile()
     highlighted_tracks = []
+    imagemarker_opacity = 128
 
     def __init__(self, data_dir, args):
         """
@@ -760,7 +761,7 @@ class App(object):
         Place an ImageMarker on the map at the specified coordinates
         """
         point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
-        point.set_color(tfunctions.clutter_color(Gdk.color_parse("green")))
+        point.set_color(tfunctions.clutter_color(Gdk.color_parse("green"), self.imagemarker_opacity))
         point.set_size(12)
         #point.set_draggable(True)
         self.imagelayer.add_marker(point)
