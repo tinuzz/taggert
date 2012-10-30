@@ -103,30 +103,22 @@ class App(object):
         """
         self.settings = tsettings.TSettings('com.tinuzz.taggert')
 
-        v = self.settings.get_value('bookmarks-names')
-        for i in range(v.n_children()):
-            val = v.get_child_value(i)
-            key = val.get_child_value(0).get_string()
-            value = val.get_child_value(1).get_string()
-            self.bookmarks[key] = {}
-            self.bookmarks[key]['name'] = value
+        # Bookmarks
+        bm_names = self.settings.get_value('bookmarks-names').unpack()
+        bm_latitudes = self.settings.get_value('bookmarks-latitudes').unpack()
+        bm_longitudes = self.settings.get_value('bookmarks-longitudes').unpack()
 
-        v = self.settings.get_value('bookmarks-latitudes')
-        for i in range(v.n_children()):
-            val = v.get_child_value(i)
-            key = val.get_child_value(0).get_string()
-            value = val.get_child_value(1).get_double()
-            self.bookmarks[key]['latitude'] = value
+        for key, name in bm_names.items():
+            self.bookmarks[key] = {
+                "name": name,
+                "latitude": bm_latitudes[key],
+                "longitude": bm_longitudes[key]
+                }
 
-        v = self.settings.get_value('bookmarks-longitudes')
-        for i in range(v.n_children()):
-            val = v.get_child_value(i)
-            key = val.get_child_value(0).get_string()
-            value = val.get_child_value(1).get_double()
-            self.bookmarks[key]['longitude'] = value
-
+        # Map source
         self.map_id = self.settings.get_value('map-source-id').get_string()
 
+        # Home location
         homeloc = self.settings.get_value('home-location')
         self.home_location = (
             homeloc.get_child_value(0).get_double(),
