@@ -40,6 +40,7 @@ import tsettings
 import imagemarker
 import constants
 import tdata
+import tfunctions
 
 GtkClutter.init([])
 
@@ -147,19 +148,6 @@ class App(object):
             color.get_child_value(1).get_int32(),
             color.get_child_value(2).get_int32()
         )
-
-    def clutter_color (self, gdkcolor):
-        """
-        Convert a Gdk.Color into a Clutter.Color
-        """
-        return Clutter.Color.new(
-            *[x / 256 for x in [gdkcolor.red, gdkcolor.green, gdkcolor.blue, 65535]])
-
-    def color_tuple (self, gdkcolor):
-        """
-        Return a 3-tuple of RGB values from a Gdk.Color
-        """
-        return (gdkcolor.red, gdkcolor.green, gdkcolor.blue)
 
     def setup_gui(self):
         """
@@ -460,7 +448,7 @@ class App(object):
                                     args1 = metadata['Exif.GPSInfo.GPSLatitude'].value
                                     args2 = metadata['Exif.GPSInfo.GPSLatitudeRef'].value
                                     args3 = args1 + [args2]
-                                    imglat = self.dms_to_decimal(*args3)
+                                    imglat = tfunctions.dms_to_decimal(*args3)
                                 except KeyError:
                                     imglat = ''
                             try:
@@ -471,7 +459,7 @@ class App(object):
                                     args1 = metadata['Exif.GPSInfo.GPSLongitude'].value
                                     args2 = metadata['Exif.GPSInfo.GPSLongitudeRef'].value
                                     args3 = args1 + [args2]
-                                    imglon = self.dms_to_decimal(*args3)
+                                    imglon = tfunctions.dms_to_decimal(*args3)
                                 except KeyError:
                                     imglon = ''
                             try:
@@ -733,15 +721,6 @@ class App(object):
         except IndexError:
             pass
 
-    def latlon_to_text(self,lat,lon):
-        """
-        Return a formatted string for a pair of coordinates
-        """
-        return "%s %.5f, %s %.5f" % (
-                'N' if lat >= 0 else 'S', abs(lat),
-                'E' if lon >= 0 else 'W', abs(lon)
-            )
-
     def handle_map_event(self, _widget, _ignore=None):
         """
         Handler for several map events that indicate that the center of the
@@ -750,7 +729,7 @@ class App(object):
         """
         lat = self.osm.get_center_latitude()
         lon = self.osm.get_center_longitude()
-        text = self.latlon_to_text(lat,lon)
+        text = tfunctions.latlon_to_text(lat,lon)
         self.clabel.set_text (text)
         self.update_adjustment1()
 
@@ -771,7 +750,7 @@ class App(object):
         self.markerlayer.remove_all()
         point = Champlain.Point()
         point.set_location(lat, lon)
-        point.set_color(self.clutter_color(self.marker_color))
+        point.set_color(tfunctions.clutter_color(self.marker_color))
         point.set_size(self.data.get_property("markersize"))
         point.set_draggable(True)
         self.markerlayer.add_marker(point)
@@ -781,7 +760,7 @@ class App(object):
         Place an ImageMarker on the map at the specified coordinates
         """
         point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
-        point.set_color(self.clutter_color(Gdk.color_parse("green")))
+        point.set_color(tfunctions.clutter_color(Gdk.color_parse("green")))
         point.set_size(12)
         #point.set_draggable(True)
         self.imagelayer.add_marker(point)
@@ -856,7 +835,7 @@ class App(object):
             lat = self.osm.get_center_latitude()
             lon = self.osm.get_center_longitude()
 
-        self.builder.get_object("entry1").set_text(self.latlon_to_text(lat,lon))
+        self.builder.get_object("entry1").set_text(tfunctions.latlon_to_text(lat,lon))
         self.builder.get_object("entry2").set_text("%.5f" % lat)
         self.builder.get_object("entry3").set_text("%.5f" % lon)
         dialog = self.builder.get_object("dialog1")
@@ -1067,26 +1046,6 @@ class App(object):
                     i += 1
         self.show_infobar ("Deleted tags from %d image%s" % (i, '' if i == 1 else 's'))
 
-    def dms_to_decimal(self, degrees, minutes, seconds, sign=' '):
-        """
-        Return a decimal representation of a coordinate specified in degrees,
-        minutes and seconds
-        """
-        return (-1 if sign[0] in 'SWsw' else 1) * (
-            float(degrees)        +
-            float(minutes) / 60   +
-            float(seconds) / 3600
-        )
-
-    def decimal_to_dms(self, decimal):
-        """
-        Return a list of fractions representing degrees, minutes and seconds
-        of a coordinate specified in a decimal value
-        """
-        remainder, degrees = modf(abs(decimal))
-        remainder, minutes = modf(remainder * 60)
-        return [self.float_to_fraction(n) for n in (degrees, minutes, remainder * 60)]
-
     def save_all(self, widget=None):
         """
         Save all modified images, repopulate the images list with only untagged
@@ -1115,9 +1074,9 @@ class App(object):
                 lat = float(model.get_value(tree_iter,3))
                 lon = float(model.get_value(tree_iter,4))
                 ele = float(model.get_value(tree_iter,8))
-                metadata['Exif.GPSInfo.GPSLatitude'] = self.decimal_to_dms(lat)
-                metadata['Exif.GPSInfo.GPSLongitude'] = self.decimal_to_dms(lon)
-                metadata['Exif.GPSInfo.GPSAltitude'] = self.float_to_fraction(ele)
+                metadata['Exif.GPSInfo.GPSLatitude'] = tfunctions.decimal_to_dms(lat)
+                metadata['Exif.GPSInfo.GPSLongitude'] = tfunctions.decimal_to_dms(lon)
+                metadata['Exif.GPSInfo.GPSAltitude'] = tfunctions.float_to_fraction(ele)
                 metadata['Exif.GPSInfo.GPSLatitudeRef'] = 'N' if lat >= 0 else 'S'
                 metadata['Exif.GPSInfo.GPSLongitudeRef'] = 'E' if lon >= 0 else 'W'
                 metadata['Exif.GPSInfo.GPSAltitudeRef'] = '0' if ele >= 0 else '1'
@@ -1213,7 +1172,7 @@ class App(object):
         for trk in self.gpx.gpxfiles[idx]['tracks']:
             # Create a tracklayer for each track
             tracklayer = polygon.Polygon(width=self.data.get_property("trackwidth"))
-            tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
+            tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_default_color))
             t0 = trk["segments"][0]["points"][0]["time"]
             tx = trk["segments"][-1]["points"][-1]["time"]
             p = 0
@@ -1414,7 +1373,7 @@ class App(object):
         if treeselect:
             # First, reset the color of the previously selected tracks
             for t in self.highlighted_tracks:
-                t.set_stroke_color(self.clutter_color(self.track_default_color))
+                t.set_stroke_color(tfunctions.clutter_color(self.track_default_color))
             self.highlighted_tracks = []
 
             model,pathlist = treeselect.get_selected_rows()
@@ -1422,7 +1381,7 @@ class App(object):
                 for p in pathlist:
                     tree_iter = model.get_iter(p)
                     tracklayer = model.get_value(tree_iter, 5)
-                    tracklayer.set_stroke_color(self.clutter_color(self.track_highlight_color))
+                    tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_highlight_color))
                     # Move the layer to the top
                     # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work
                     #tracklayer.get_parent().set_child_above_sibling(tracklayer, None)
@@ -1571,12 +1530,12 @@ class App(object):
             self.data.set_property("trackwidth", self.builder.get_object("adjustment3").get_value())
 
             # save settings
-            self.settings.set_value('marker-color', GLib.Variant('(iii)', self.color_tuple(self.marker_color)))
-            self.settings.set_value('normal-track-color', GLib.Variant('(iii)', self.color_tuple(self.track_default_color)))
-            self.settings.set_value('selected-track-color', GLib.Variant('(iii)', self.color_tuple(self.track_highlight_color)))
+            self.settings.set_value('marker-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.marker_color)))
+            self.settings.set_value('normal-track-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.track_default_color)))
+            self.settings.set_value('selected-track-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.track_highlight_color)))
 
             # update GUI appearance
-            self.markerlayer.get_markers()[0].set_color(self.clutter_color(self.marker_color))
+            self.markerlayer.get_markers()[0].set_color(tfunctions.clutter_color(self.marker_color))
             self.treeselect2_changed(self.builder.get_object("treeview2").get_selection())
         else:
             # Reset preferences window
@@ -1599,7 +1558,7 @@ class App(object):
         current settings
         """
         tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
-        tracklayer.set_stroke_color(self.clutter_color(self.track_default_color))
+        tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_default_color))
         tracklayer.set_stroke_width(self.data.trackwidth)
 
     def treeview_x_select_all(self, widget=None):
@@ -1660,12 +1619,6 @@ class App(object):
         """
         checked = self.builder.get_object("checkmenuitem3").get_active()
         self.builder.get_object("treeview1").get_column(4).set_visible(checked)
-
-    def float_to_fraction(self,value):
-        """
-        Return a Fraction for a floating point value
-        """
-        return fractions.Fraction.from_float(value).limit_denominator(99999)
 
     def update_gtk(self):
         """
