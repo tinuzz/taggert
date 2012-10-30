@@ -138,6 +138,7 @@ class App(object):
         self.marker_color = self.get_color_from_settings('marker-color')
         self.track_default_color = self.get_color_from_settings('normal-track-color')
         self.track_highlight_color = self.get_color_from_settings('selected-track-color')
+        self.imagemarker_color = self.get_color_from_settings('image-marker-color')
 
     def get_color_from_settings(self, key):
         """
@@ -188,6 +189,7 @@ class App(object):
         self.builder.get_object("colorbutton1").set_color(self.marker_color)
         self.builder.get_object("colorbutton2").set_color(self.track_default_color)
         self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
+        self.builder.get_object("colorbutton4").set_color(self.imagemarker_color)
         self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
         self.builder.get_object("adjustment2").set_value(self.data.markersize)
         self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
@@ -761,7 +763,7 @@ class App(object):
         Place an ImageMarker on the map at the specified coordinates
         """
         point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
-        point.set_color(tfunctions.clutter_color(Gdk.color_parse("green"), self.imagemarker_opacity))
+        point.set_color(tfunctions.clutter_color(self.imagemarker_color, self.imagemarker_opacity))
         point.set_size(12)
         #point.set_draggable(True)
         self.imagelayer.add_marker(point)
@@ -1527,6 +1529,7 @@ class App(object):
             self.marker_color = self.builder.get_object("colorbutton1").get_color()
             self.track_default_color = self.builder.get_object("colorbutton2").get_color()
             self.track_highlight_color = self.builder.get_object("colorbutton3").get_color()
+            self.imagemarker_color = self.builder.get_object("colorbutton4").get_color()
             self.data.set_property("markersize", self.builder.get_object("adjustment2").get_value())
             self.data.set_property("trackwidth", self.builder.get_object("adjustment3").get_value())
 
@@ -1534,15 +1537,18 @@ class App(object):
             self.settings.set_value('marker-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.marker_color)))
             self.settings.set_value('normal-track-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.track_default_color)))
             self.settings.set_value('selected-track-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.track_highlight_color)))
+            self.settings.set_value('image-marker-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.imagemarker_color)))
 
             # update GUI appearance
             self.markerlayer.get_markers()[0].set_color(tfunctions.clutter_color(self.marker_color))
             self.treeselect2_changed(self.builder.get_object("treeview2").get_selection())
+            self.update_imagemarker_color()
         else:
             # Reset preferences window
             self.builder.get_object("colorbutton1").set_color(self.marker_color)
             self.builder.get_object("colorbutton2").set_color(self.track_default_color)
             self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
+            self.builder.get_object("colorbutton4").set_color(self.imagemarker_color)
             self.builder.get_object("adjustment2").set_value(self.data.markersize)
             self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
 
@@ -1561,6 +1567,10 @@ class App(object):
         tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
         tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_default_color))
         tracklayer.set_stroke_width(self.data.trackwidth)
+
+    def update_imagemarker_color(self):
+        for m in self.imagelayer.get_markers():
+            m.set_color(tfunctions.clutter_color(self.imagemarker_color, self.imagemarker_opacity))
 
     def treeview_x_select_all(self, widget=None):
         """

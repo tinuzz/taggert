@@ -21,6 +21,10 @@
       <default>(0, 0, 65535)</default>
       <summary>Use this color for highlighting selected tracks on the map.</summary>
     </key>
+    <key type="(iii)" name="image-marker-color">
+      <default>(0, 65535, 63292)</default>
+      <summary>Use this color for imagemarkers on the map.</summary>
+    </key>
     <key type="i" name="marker-size">
       <default>18</default>
       <summary>Use this size for the marker on the map. </summary>
