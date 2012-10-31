@@ -15,6 +15,7 @@
 """tsettings module, defines the TSettings class"""
 
 from gi.repository import Gio
+from gi.repository import Gdk
 
 class TSettings(Gio.Settings):
     """
@@ -33,3 +34,16 @@ class TSettings(Gio.Settings):
         GottenGeography.
         """
         Gio.Settings.bind(self, key, widget, prop or key, flags)
+
+    def get_color(self, key):
+        """
+        Returns a Gdk.Color using the values from the specified setting, which
+        should be a 3-tuple of RGB values
+        """
+        return Gdk.Color(*self.get_value(key).unpack())
+
+    def get_unpacked(self, key):
+        """
+        Return the unpacked value of the specified setting
+        """
+        return self.get_value(key).unpack()
