@@ -407,9 +407,10 @@ class App(object):
                 for fl in os.listdir(self.data.imagedir):
                     fname = os.path.join(self.data.imagedir, fl)
                     if not os.path.isdir(fname):
-                        if os.path.splitext(fname)[1].lower() == ".jpg":
-                            data = None
-                            modf = False
+                        #if os.path.splitext(fname)[1].lower() == ".jpg":
+                        data = None
+                        modf = False
+                        try:
                             metadata = pyexiv2.ImageMetadata(fname)
                             metadata.read()
                             # Get the camera make/model
@@ -476,6 +477,10 @@ class App(object):
                                     self.add_imagemarker_at(treeiter, fl, imglat, imglon)
                             else:
                                 notshown += 1
+
+                        except IOError:
+                            # Unsupported file format
+                            pass
         finally:
             self.filelist_locked = False
 
@@ -686,7 +691,7 @@ class App(object):
             if response == Gtk.ResponseType.OK:   # http://developer.gnome.org/gtk3/3.4/GtkDialog.html#GtkResponseType
                 self.data.set_property("imagedir", chooser.get_filename())
                 self.modified = {}
-                self.populate_store1 ()
+                self.populate_store1()
             chooser.destroy()
 
     def go_to_location(self, lat, lon, zoom=None):
@@ -1487,6 +1492,7 @@ class App(object):
         """
         Select all images
         """
+        #pprint(Gtk.Buildable.get_name(widget))
         self.builder.get_object("treeview1").get_selection().select_all()
 
     def images_select_none(self, widget=None):
