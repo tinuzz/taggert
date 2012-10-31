@@ -30,6 +30,7 @@ Features
 * Uses GSettings to store runtime configuration options
 * Uses pytz to (hopefully) reliably calculate timezone offsets for tracks
 * Configurable colors for drawing tracks and markers
+* Lets you tag any file format supported by exiv2
 
 Prerequisites
 -------------
