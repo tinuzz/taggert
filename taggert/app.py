@@ -115,9 +115,6 @@ class App(object):
                 "longitude": bm_longitudes[key]
                 }
 
-        # Map source
-        self.map_id = self.settings.get_value('map-source-id').get_string()
-
         # Home location
         homeloc = self.settings.get_value('home-location')
         self.home_location = (
@@ -167,6 +164,7 @@ class App(object):
         self.settings.bind('image-marker-size', self.data, 'imagemarkersize')
         self.settings.bind('track-timezone', self.data, 'tracktimezone')
         self.settings.bind('always-this-timezone', self.data, 'alwaysthistimezone')
+        self.settings.bind('map-source-id', self.data, 'mapsourceid')
 
         # Restore window size
         s = self.settings.get_value('window-size')
@@ -262,6 +260,7 @@ class App(object):
             "markersize": self.redraw_marker,
             "imagemarkersize": self.update_imagemarker_appearance,
             "trackwidth": lambda *ignore: self.with_all_tracks_do(self.update_track_appearance),
+            'mapsourceid': self.update_map,
         }
         self.data.connect_signals(handlers)
 
@@ -277,7 +276,7 @@ class App(object):
         self.osm = widget.get_view()
 
         # Set the map source
-        self.osm.set_map_source(self.map_sources[self.map_id])
+        self.osm.set_map_source(self.map_sources[self.data.mapsourceid])
         self.update_adjustment1()
 
         # A marker layer
@@ -373,7 +372,7 @@ class App(object):
         Update the Gtk.Adjustment that controls the zoom widget, using the map
         source for minimum and maximum values
         """
-        ms = self.map_sources[self.map_id]
+        ms = self.map_sources[self.data.mapsourceid]
         cur_zoom = self.osm.get_zoom_level()
         min_zoom = ms.get_min_zoom_level()
         max_zoom = ms.get_max_zoom_level()
@@ -602,8 +601,8 @@ class App(object):
             self.map_sources_names[mapid] = name
             self.mapstore.append([mapid, name])
 
-        if not self.map_id in self.map_sources:
-            self.map_id = 'osm-mapnik'
+        if not self.data.mapsourceid in self.map_sources:
+            self.data.mapsourceid = 'osm-mapnik'
 
     def combobox_changed(self, combobox):
         """
@@ -614,10 +613,14 @@ class App(object):
         model = combobox.get_model()
         active = combobox.get_active_iter()
         if active != None:
-            self.map_id = model[active][0]
-            self.settings.set_value("map-source-id", GLib.Variant('s', self.map_id))
-            self.osm.set_map_source(self.map_sources[self.map_id])
+            self.data.mapsourceid = model[active][0]
+
+    def update_map(self, _data=None, _prop=None):
+        try:
+            self.osm.set_map_source(self.map_sources[self.data.mapsourceid])
             self.update_adjustment1()
+        except KeyError:
+            self.data.mapsourceid = 'osm-mapnik'
 
     def treeselect_changed (self, treeselect):
         """
@@ -1126,7 +1129,7 @@ class App(object):
         map source
         """
         model = self.builder.get_object("liststore3")
-        model.foreach(self.find_and_set_map_id, self.map_id)
+        model.foreach(self.find_and_set_map_id, self.data.mapsourceid)
 
     def find_and_set_map_id(self, model, path, tree_iter, string):
         """

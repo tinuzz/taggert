@@ -30,6 +30,7 @@ class TData(GObject.GObject):
     markersize         = GObject.property(type=int)
     trackwidth         = GObject.property(type=int)
     imagemarkersize    = GObject.property(type=int)
+    mapsourceid        = GObject.property(type=str)
 
     def __init__(self):
         """Constructor, does nothing special"""
