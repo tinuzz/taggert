@@ -1,3 +1,17 @@
+v1.2 - unreleased
+-----------------
+
+- Make application appear more responsive during time-consuming operations
+- Track line width on the map is now configurable
+- Add image markers on the map for tagged images and add an option to hide them
+- Color and size of image markers are configurable
+- Use GObject property bind functionality to automatically save settings
+- Add inline documentation to the code
+- Move general purpose functions outside the main app module
+- Make image markers 50% opaque
+- Many general code improvements and optimizations
+- Let Exiv2 decide on the supported file formats, instead of just reading JPG
+
 v1.1 - 24 Oct 2012
 ------------------
 
