@@ -57,7 +57,7 @@ class App(object):
     latlon_buffer = ('', '', '')
     clicked_lat = 0.0
     clicked_lon = 0.0
-    map_id = 'osm-mapnik'
+    default_map_id = 'osm-mapnik'
     bookmarks = {}
     last_clicked_bookmark = None
     modified = {}
@@ -78,9 +78,9 @@ class App(object):
         """
         Application entry point, initializes the GUI and starts the Gtk main loop
         """
+        self.init_builder()
         self.read_settings()
         self.setup_gui()
-        self.window.set_title('Taggert')
         self.init_map_sources()
         self.setup_map()
         self.window.show_all()
@@ -96,17 +96,25 @@ class App(object):
         self.init_treeview2()
         Gtk.main()
 
+    def init_builder(self):
+        """
+        Initialize the GUI with Gtk.Builder
+        """
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(os.path.join(self.data_dir, "taggert.glade"))
+        self.window = self.builder.get_object("window1")
+
     def read_settings(self):
         """
-        Initializes a TSettings object and processes all settings that are not
-        bound to (and thus automatically stored in) the TData object.
+        Initializes a TSettings object and processes all settings, some read
+        explicitly and some initialized via TSettings bindings
         """
         self.settings = tsettings.TSettings('com.tinuzz.taggert')
 
         # Bookmarks
-        bm_names = self.settings.get_value('bookmarks-names').unpack()
-        bm_latitudes = self.settings.get_value('bookmarks-latitudes').unpack()
-        bm_longitudes = self.settings.get_value('bookmarks-longitudes').unpack()
+        bm_names = self.settings.get_unpacked('bookmarks-names')
+        bm_latitudes = self.settings.get_unpacked('bookmarks-latitudes')
+        bm_longitudes = self.settings.get_unpacked('bookmarks-longitudes')
 
         for key, name in bm_names.items():
             self.bookmarks[key] = {
@@ -116,47 +124,15 @@ class App(object):
                 }
 
         # Home location
-        homeloc = self.settings.get_value('home-location')
-        self.home_location = (
-            homeloc.get_child_value(0).get_double(),
-            homeloc.get_child_value(1).get_double(),
-            homeloc.get_child_value(2).get_int32(),
-        )
+        self.home_location = self.settings.get_unpacked('home-location')
 
         # Colors
-        self.marker_color = self.get_color_from_settings('marker-color')
-        self.track_default_color = self.get_color_from_settings('normal-track-color')
-        self.track_highlight_color = self.get_color_from_settings('selected-track-color')
-        self.imagemarker_color = self.get_color_from_settings('image-marker-color')
+        self.marker_color = self.settings.get_color('marker-color')
+        self.track_default_color = self.settings.get_color('normal-track-color')
+        self.track_highlight_color = self.settings.get_color('selected-track-color')
+        self.imagemarker_color = self.settings.get_color('image-marker-color')
 
-    def get_color_from_settings(self, key):
-        """
-        Returns a Gdk.Color using a 3-tuple of RGB values from TSettings
-        """
-        color = self.settings.get_value(key)
-        return Gdk.Color(
-            color.get_child_value(0).get_int32(),
-            color.get_child_value(1).get_int32(),
-            color.get_child_value(2).get_int32()
-        )
-
-    def setup_gui(self):
-        """
-        Initialize the GUI with Gtk.Builder, bind certain widget
-        parameter values to TSettings and initialize other widget parameters
-        """
-        self.builder = Gtk.Builder()
-        self.builder.add_from_file(os.path.join(self.data_dir, "taggert.glade"))
-        self.window = self.builder.get_object("window1")
-
-        # GSettings bindings. Object properties from several Gtk widgets, as well as
-        # specific properties from the self.data (TData) object are bound to the
-        # corresponding GSettings.
-        self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
-        self.settings.bind('show-untagged-only', self.builder.get_object("checkmenuitem1"), 'active')
-        self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
-        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
-        self.settings.bind('show-image-markers', self.builder.get_object("menuitem35"), 'active')
+        # TSettings bindings. This stores the values from self.settings in self.data
         self.settings.bind('last-image-dir', self.data, 'imagedir')
         self.settings.bind('last-track-folder', self.data, 'lasttrackfolder')
         self.settings.bind('track-line-width', self.data, 'trackwidth')
@@ -166,12 +142,25 @@ class App(object):
         self.settings.bind('always-this-timezone', self.data, 'alwaysthistimezone')
         self.settings.bind('map-source-id', self.data, 'mapsourceid')
 
+        # TSettings bindings for widgets' properties
+        self.settings.bind('pane-position', self.builder.get_object("paned1"), 'position')
+        self.settings.bind('show-untagged-only', self.builder.get_object("checkmenuitem1"), 'active')
+        self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
+        self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
+        self.settings.bind('show-image-markers', self.builder.get_object("menuitem35"), 'active')
+
+    def setup_gui(self):
+        """
+        Initialize some GUI elements that depend on settings and which are
+        not bound to TSettings directly
+        """
+        # Set window title
+        self.window.set_title('Taggert')
+
         # Restore window size
-        s = self.settings.get_value('window-size')
-        w = s.get_child_value(0).get_int32()
-        h = s.get_child_value(1).get_int32()
-        self.window_size = (w,h)
-        self.window.set_default_size(w,h)
+        wh = self.settings.get_unpacked('window-size')
+        self.window_size = wh
+        self.window.set_default_size(*wh)
 
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
         self.builder.get_object("checkbutton1").set_active(self.data.alwaysthistimezone)
@@ -602,7 +591,7 @@ class App(object):
             self.mapstore.append([mapid, name])
 
         if not self.data.mapsourceid in self.map_sources:
-            self.data.mapsourceid = 'osm-mapnik'
+            self.data.mapsourceid = self.default_map_id
 
     def combobox_changed(self, combobox):
         """
@@ -620,7 +609,7 @@ class App(object):
             self.osm.set_map_source(self.map_sources[self.data.mapsourceid])
             self.update_adjustment1()
         except KeyError:
-            self.data.mapsourceid = 'osm-mapnik'
+            self.data.mapsourceid = self.default_map_id
 
     def treeselect_changed (self, treeselect):
         """
