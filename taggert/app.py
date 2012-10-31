@@ -164,6 +164,7 @@ class App(object):
         self.settings.bind('last-track-folder', self.data, 'lasttrackfolder')
         self.settings.bind('track-line-width', self.data, 'trackwidth')
         self.settings.bind('marker-size', self.data, 'markersize')
+        self.settings.bind('image-marker-size', self.data, 'imagemarkersize')
         self.settings.bind('track-timezone', self.data, 'tracktimezone')
         self.settings.bind('always-this-timezone', self.data, 'alwaysthistimezone')
 
@@ -185,6 +186,7 @@ class App(object):
         self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
         self.builder.get_object("adjustment2").set_value(self.data.markersize)
         self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
+        self.builder.get_object("adjustment4").set_value(self.data.imagemarkersize)
 
     def setup_gui_signals(self):
         """
@@ -258,6 +260,7 @@ class App(object):
         """
         handlers = {
             "markersize": self.redraw_marker,
+            "imagemarkersize": self.update_imagemarker_appearance,
             "trackwidth": lambda *ignore: self.with_all_tracks_do(self.update_track_appearance),
         }
         self.data.connect_signals(handlers)
@@ -761,7 +764,7 @@ class App(object):
         """
         point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
         point.set_color(tfunctions.clutter_color(self.imagemarker_color, self.imagemarker_opacity))
-        point.set_size(12)
+        point.set_size(self.data.imagemarkersize)
         #point.set_draggable(True)
         self.imagelayer.add_marker(point)
 
@@ -1517,6 +1520,7 @@ class App(object):
             self.imagemarker_color = self.builder.get_object("colorbutton4").get_color()
             self.data.set_property("markersize", self.builder.get_object("adjustment2").get_value())
             self.data.set_property("trackwidth", self.builder.get_object("adjustment3").get_value())
+            self.data.set_property("imagemarkersize", self.builder.get_object("adjustment4").get_value())
 
             # save settings
             self.settings.set_value('marker-color', GLib.Variant('(iii)', tfunctions.color_tuple(self.marker_color)))
@@ -1527,7 +1531,6 @@ class App(object):
             # update GUI appearance
             self.markerlayer.get_markers()[0].set_color(tfunctions.clutter_color(self.marker_color))
             self.treeselect2_changed(self.builder.get_object("treeview2").get_selection())
-            self.update_imagemarker_color()
         else:
             # Reset preferences window
             self.builder.get_object("colorbutton1").set_color(self.marker_color)
@@ -1536,6 +1539,7 @@ class App(object):
             self.builder.get_object("colorbutton4").set_color(self.imagemarker_color)
             self.builder.get_object("adjustment2").set_value(self.data.markersize)
             self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
+            self.builder.get_object("adjustment4").set_value(self.data.imagemarkersize)
 
     def with_all_tracks_do (self, callback, userdata=None):
         """
@@ -1553,9 +1557,10 @@ class App(object):
         tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_default_color))
         tracklayer.set_stroke_width(self.data.trackwidth)
 
-    def update_imagemarker_color(self):
+    def update_imagemarker_appearance(self, _data=None, _prop=None):
         for m in self.imagelayer.get_markers():
             m.set_color(tfunctions.clutter_color(self.imagemarker_color, self.imagemarker_opacity))
+            m.set_size(self.data.imagemarkersize)
 
     def treeview_x_select_all(self, widget=None):
         """

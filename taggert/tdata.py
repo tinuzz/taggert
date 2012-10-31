@@ -29,6 +29,7 @@ class TData(GObject.GObject):
     alwaysthistimezone = GObject.property(type=bool, default=False)
     markersize         = GObject.property(type=int)
     trackwidth         = GObject.property(type=int)
+    imagemarkersize    = GObject.property(type=int)
 
     def __init__(self):
         """Constructor, does nothing special"""

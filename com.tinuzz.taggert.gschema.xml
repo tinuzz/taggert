@@ -26,8 +26,12 @@
       <summary>Use this color for imagemarkers on the map.</summary>
     </key>
     <key type="i" name="marker-size">
-      <default>18</default>
+      <default>20</default>
       <summary>Use this size for the marker on the map. </summary>
+    </key>
+    <key type="i" name="image-marker-size">
+      <default>12</default>
+      <summary>Use this size for imagemarkers on the map. </summary>
     </key>
     <key type="i" name="track-line-width">
       <default>3</default>
