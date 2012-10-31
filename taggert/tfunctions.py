@@ -66,3 +66,17 @@ def latlon_to_text(lat, lon):
             'N' if lat >= 0 else 'S', abs(lat),
             'E' if lon >= 0 else 'W', abs(lon)
         )
+
+
+def timezone_split(tz):
+    """
+    Return a 2-tuple containing the timezone in two parts
+    'Europe/Amsterdam' => ('Europe', 'Amsterdam')
+    'UTC'              => ('UTC', '')
+    """
+    if tz.find('/') >= 0:
+        a,b = tz.split('/', 1)
+    else:
+        a = tz
+        b = ''
+    return (a,b)

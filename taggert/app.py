@@ -1402,13 +1402,13 @@ class App(object):
         from pytz.common_timezones
         """
         store = self.builder.get_object("liststore4")
-        cur_a, _ignore = self.timezone_split(self.data.tracktimezone)
+        cur_a, _ignore = tfunctions.timezone_split(self.data.tracktimezone)
 
         zones = {}
         i = 0
         cur_idx = 0
         for tz in pytz.common_timezones:
-            a,b =  self.timezone_split(tz)
+            a,b =  tfunctions.timezone_split(tz)
             if not zones.has_key(a):
                 zones[a] = []
                 store.append([a])
@@ -1443,7 +1443,7 @@ class App(object):
         """
         model = combobox.get_model()
         active = combobox.get_active_iter()
-        _ignore, cur_b = self.timezone_split(self.data.tracktimezone)
+        _ignore, cur_b = tfunctions.timezone_split(self.data.tracktimezone)
         i = 0
         cur_idx = 0
         if active != None:
@@ -1451,7 +1451,7 @@ class App(object):
             store = self.builder.get_object("liststore5")
             store.clear()
             for tz in pytz.common_timezones:
-                a,b = self.timezone_split(tz)
+                a,b = tfunctions.timezone_split(tz)
                 if a == tzpre:
                     store.append([b])
                     if b == cur_b:
@@ -1476,19 +1476,6 @@ class App(object):
         always = self.builder.get_object("checkbutton1").get_active()
 
         return ("%s%s" % (pre, '/' + post if post else ''), always)
-
-    def timezone_split(self, tz):
-        """
-        Return a 2-tuple containing the timezone in two parts
-        'Europe/Amsterdam' => ('Europe', 'Amsterdam')
-        'UTC'              => ('UTC', '')
-        """
-        if tz.find('/') >= 0:
-            a,b = tz.split('/', 1)
-        else:
-            a = tz
-            b = ''
-        return (a,b)
 
     def images_select_all_from_camera(self, widget=None):
         """
