@@ -36,6 +36,9 @@ class TData(GObject.GObject):
         """Constructor, does nothing special"""
         GObject.GObject.__init__(self)
 
+    def __repr__(self):
+        return repr(self.__dict__)
+
     def connect_signals(self, handlers):
         """
         Connect specified handler to notify signal for specified properties.
