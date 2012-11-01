@@ -1481,7 +1481,14 @@ class App(object):
         """
         Select all images from the same camera. Not implemented.
         """
-        return
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        model,pathlist = treeselect.get_selected_rows()
+        if len(pathlist) > 1:
+            self.show_infobar("Cannot select by camera from multiple images.")
+        else:
+            tree_iter = model.get_iter(pathlist[0])
+            camera = model.get_value(tree_iter, constants.images.columns.camera)
+            self.with_all_images_do(self.select_from_camera, camera)
 
     def images_select_all(self, widget=None):
         """
@@ -1495,6 +1502,16 @@ class App(object):
         Select no images
         """
         self.builder.get_object("treeview1").get_selection().unselect_all()
+
+    def select_from_camera(self, model, path, tree_iter, camera):
+        """
+        Callback function to select a given tree_iter if the value for
+        the 'camera' field matches the given camera value
+        """
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        if model.get_value(tree_iter, constants.images.columns.camera) == camera:
+            treeselect.select_path(path)
+            self.update_gtk()
 
     def settings_dialog(self, widget=None):
         """
@@ -1532,6 +1549,13 @@ class App(object):
             self.builder.get_object("adjustment2").set_value(self.data.markersize)
             self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
             self.builder.get_object("adjustment4").set_value(self.data.imagemarkersize)
+
+    def with_all_images_do (self, callback, userdata=None):
+        """
+        Iterate over all tracks and call the specified function on each of them
+        """
+        model = self.builder.get_object("liststore1")
+        model.foreach(callback, userdata)
 
     def with_all_tracks_do (self, callback, userdata=None):
         """
