@@ -633,8 +633,8 @@ class App(object):
                 # Get the first selected picture
                 p = pathlist[0]
                 tree_iter = model.get_iter(p)
-                value = model.get_value(tree_iter,0)
-                orientation = model.get_value(tree_iter,2)
+                value = model.get_value(tree_iter, constants.images.columns.filename)
+                orientation = model.get_value(tree_iter, constants.images.columns.rotation)
                 filename = os.path.join(self.data.imagedir, value)
 
                 pb = GdkPixbuf.Pixbuf.new_from_file_at_size(filename, 300, 200)
@@ -1069,15 +1069,15 @@ class App(object):
         For all modified images, read the metadata from the file, update it
         with our changes and write it back to the file
         """
-        fl = model.get_value(tree_iter,0)
-        if model.get_value(tree_iter,5): # "modified"
+        fl = model.get_value(tree_iter, constants.images.columns.filename)
+        if model.get_value(tree_iter, constants.images.columns.modified):
             fname = os.path.join(self.data.imagedir, fl)
             metadata = pyexiv2.ImageMetadata(fname)
             metadata.read()
             try:
-                lat = float(model.get_value(tree_iter,3))
-                lon = float(model.get_value(tree_iter,4))
-                ele = float(model.get_value(tree_iter,8))
+                lat = float(model.get_value(tree_iter, constants.images.columns.latitude))
+                lon = float(model.get_value(tree_iter, constants.images.columns.longitude))
+                ele = float(model.get_value(tree_iter, constants.images.columns.elevation))
                 metadata['Exif.GPSInfo.GPSLatitude'] = tfunctions.decimal_to_dms(lat)
                 metadata['Exif.GPSInfo.GPSLongitude'] = tfunctions.decimal_to_dms(lon)
                 metadata['Exif.GPSInfo.GPSAltitude'] = tfunctions.float_to_fraction(ele)
@@ -1134,7 +1134,7 @@ class App(object):
         For the specified map source chooser entry, match the map_id against
         the currently selected map_id, and activate the entry if it matches
         """
-        map_id = model.get_value(tree_iter,0)
+        map_id = model.get_value(tree_iter, constants.mapsources.columns.mapid)
         if map_id == string:
             self.builder.get_object("combobox1").set_active_iter(tree_iter)
             return True
@@ -1343,7 +1343,7 @@ class App(object):
         if pathlist:
             for p in pathlist:
                 tree_iter = model.get_iter(p)
-                tracklayer = model.get_value(tree_iter, 5)
+                tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
                 if box:
                     box.compose(tracklayer.get_bounding_box())
                 else:
@@ -1362,7 +1362,7 @@ class App(object):
             pathlist.reverse()
             for p in pathlist:
                 tree_iter = model.get_iter(p)
-                tracklayer = model.get_value(tree_iter, 5)
+                tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
                 tracklayer.destroy()
                 model.remove(tree_iter)
                 # TODO: remove track entry from self.gpx.gpxfiles[idx]['tracks']
@@ -1384,7 +1384,7 @@ class App(object):
             if pathlist:
                 for p in pathlist:
                     tree_iter = model.get_iter(p)
-                    tracklayer = model.get_value(tree_iter, 5)
+                    tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
                     tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_highlight_color))
                     # Move the layer to the top
                     # raise_top() is deprecated since v1.10 but the set_child_above_sibling() construct doesn't seem to work

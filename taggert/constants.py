@@ -44,3 +44,10 @@ class NotebookPages(object):
 
 class notebook(object):
     pages = NotebookPages()
+
+class MapsourceColumns(object):
+    mapid     = 0
+    name      = 1
+
+class mapsources(object):
+    columns = MapsourceColumns()
