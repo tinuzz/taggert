@@ -1367,6 +1367,16 @@ Unchecked means 'ask every time'</property>
                       </object>
                     </child>
                     <child>
+                      <object class="GtkCheckMenuItem" id="checkmenuitem37">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Camera ID column</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="checkmenuitem37_toggled" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkCheckMenuItem" id="checkmenuitem3">
                         <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>

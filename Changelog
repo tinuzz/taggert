@@ -11,6 +11,8 @@ v1.2 - unreleased
 - Make image markers 50% opaque
 - Many general code improvements and optimizations
 - Let Exiv2 decide on the supported file formats, instead of just reading JPG
+- Implement "select all from this camera" for images
+- Add camera ID column to images list, hidden by default
 
 v1.1 - 24 Oct 2012
 ------------------

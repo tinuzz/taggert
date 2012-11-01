@@ -62,6 +62,7 @@ class App(object):
     last_clicked_bookmark = None
     modified = {}
     show_tracks = True
+    show_camera = False
     gpx = gpxfile.GPXfile()
     highlighted_tracks = []
     imagemarker_opacity = 128
@@ -163,6 +164,7 @@ class App(object):
         self.window.set_default_size(*wh)
 
         self.builder.get_object("checkmenuitem2").set_active(self.show_tracks)
+        self.builder.get_object("checkmenuitem37").set_active(self.show_camera)
         self.builder.get_object("checkbutton1").set_active(self.data.alwaysthistimezone)
         self.window.set_position(Gtk.WindowPosition.CENTER)
         self.statusbar = self.builder.get_object("statusbar1")
@@ -220,6 +222,7 @@ class App(object):
             "checkmenuitem2_toggled": self.toggle_tracks,
             "checkmenuitem3_toggled": self.toggle_elevation,
             "checkmenuitem9_toggled": self.toggle_overlay,
+            "checkmenuitem37_toggled": self.toggle_camera_column,
             "treeview-selection1_changed": self.treeselect_changed,
             "treeview-selection2_changed": self.treeselect2_changed,
             "treeview1_button_press_event": self.handle_treeview1_click,
@@ -340,21 +343,27 @@ class App(object):
         col4 = Gtk.TreeViewColumn("Elevation", renderer,
             text=constants.images.columns.elevation,
             cell_background_set=constants.images.columns.modified)
+        col5 = Gtk.TreeViewColumn("Camera", renderer,
+            text=constants.images.columns.camera,
+            cell_background_set=constants.images.columns.modified)
 
         col0.set_sort_column_id(constants.images.columns.filename)
         col1.set_sort_column_id(constants.images.columns.datetime)
         col2.set_sort_column_id(constants.images.columns.latitude)
         col3.set_sort_column_id(constants.images.columns.longitude)
         col4.set_sort_column_id(constants.images.columns.elevation)
+        col5.set_sort_column_id(constants.images.columns.camera)
 
         tree = self.builder.get_object("treeview1")
         tree.append_column(col0)
         tree.append_column(col1)
+        tree.append_column(col5)
         tree.append_column(col2)
         tree.append_column(col3)
         tree.append_column(col4)
 
         col4.set_visible(self.builder.get_object("checkmenuitem3").get_active())
+        col5.set_visible(self.builder.get_object("checkmenuitem37").get_active())
 
     def update_adjustment1(self):
         """
@@ -1636,6 +1645,15 @@ class App(object):
         """
         checked = self.builder.get_object("checkmenuitem3").get_active()
         self.builder.get_object("treeview1").get_column(4).set_visible(checked)
+
+    def toggle_camera_column(self, widget=None):
+        """
+        Handler for the 'toggled' signal from a checkmenuitem, shows or hides the
+        camera ID column in the images list accordingly
+        """
+        checked = self.builder.get_object("checkmenuitem37").get_active()
+        self.show_camera = checked
+        self.builder.get_object("treeview1").get_column(2).set_visible(checked)
 
     def update_gtk(self):
         """
