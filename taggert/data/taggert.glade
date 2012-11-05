@@ -850,7 +850,7 @@ Unchecked means 'ask every time'</property>
       <!-- column-name datetime -->
       <column type="gchararray"/>
       <!-- column-name orientation -->
-      <column type="gchararray"/>
+      <column type="PyObject"/>
       <!-- column-name latitude -->
       <column type="gchararray"/>
       <!-- column-name longitude -->

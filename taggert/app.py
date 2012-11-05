@@ -424,8 +424,7 @@ class App(object):
                             else:
                                 dt = ''
                             # Get image orientation
-                            #rot = metadata.get_orientation()
-                            rot = '1'
+                            rot = metadata.get_orientation()
 
                             # Get GPS info
                             try:
@@ -617,9 +616,9 @@ class App(object):
                 filename = os.path.join(self.data.imagedir, value)
 
                 pb = GdkPixbuf.Pixbuf.new_from_file_at_size(filename, 300, 200)
-                if orientation == '6':
+                if orientation == GExiv2.Orientation.ROT_90:
                     pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.CLOCKWISE)
-                elif orientation == '8':
+                elif orientation == GExiv2.Orientation.ROT_270:
                     pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.COUNTERCLOCKWISE)
 
                 # If, after rotating, the image is bigger than 300x200, resize it
