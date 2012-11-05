@@ -1,3 +1,9 @@
+v1.3 - unreleased
+-----------------
+
+- Replace pyexiv2 with GExiv2 (GObject Introspection)
+- Fix elevation column visibility bug
+
 v1.2 - 05 Nov 2012
 -----------------
 
