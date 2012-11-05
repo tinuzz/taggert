@@ -44,7 +44,7 @@ import tfunctions
 
 GtkClutter.init([])
 
-VERSION = 1.1
+VERSION = 1.2
 
 START  = Clutter.BinAlignment.START
 CENTER = Clutter.BinAlignment.CENTER
@@ -59,6 +59,7 @@ class App(object):
     clicked_lon = 0.0
     default_map_id = 'osm-mapnik'
     bookmarks = {}
+    #cameras = {}
     last_clicked_bookmark = None
     modified = {}
     show_tracks = True
@@ -471,10 +472,14 @@ class App(object):
                                     imgele = ''
 
                             if (not show_untagged_only) or imglat == '' or imglon == '' or data:
-                                treeiter = store.append([fl, dt, rot, str(imglat), str(imglon), modf, camera, dtobj, str(imgele)])
+                                treeiter = store.append([fl, dt, rot, str(imglat), str(imglon),
+                                    modf, camera, dtobj, str(imgele)])
                                 shown += 1
                                 if imglat and imglon:
                                     self.add_imagemarker_at(treeiter, fl, imglat, imglon)
+                                #if camera not in self.cameras:
+                                #    self.cameras[camera] = []
+                                #self.cameras[camera].append(treeiter)
                             else:
                                 notshown += 1
 
@@ -485,7 +490,7 @@ class App(object):
             self.filelist_locked = False
 
         self.raise_layers()
-        msg = "%d images" % shown
+        msg = "%s: %d images" % (self.data.imagedir, shown)
         if notshown > 0:
             msg = "%s, %d already tagged images not shown" % (msg, notshown)
         self.statusbar.push(0, msg)

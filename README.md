@@ -123,18 +123,19 @@ Roadmap
 * Python 3 support
 
 Robert Bruce Park, who created GottenGeography, also created GObject
-Introspection data for 'gexiv2' [7], making this GObject wrapper usable from
+Introspection data for 'gexiv2' [8], making this GObject wrapper usable from
 Python, including version 3. His work has been merged with upstream gexiv2
 and should appear in gexiv2 version 0.5.0.
 
 When gexiv2 v0.5.0 or greater is available for Debian, Taggert will be
 rewritten to use that, rather than pyexiv2.
 
-* [7] <http://redmine.yorba.org/projects/gexiv2/wiki>
+* [8] <http://redmine.yorba.org/projects/gexiv2/wiki>
 
 History
 -------
 2012-10-15   Released version 1.0
 2012-10-24   Released version 1.1
+2012-11-05   Released version 1.2
 
 See 'Changelog' for a summary of changes for each version.
