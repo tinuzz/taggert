@@ -9,7 +9,7 @@ X-Python-Version: >= 2.7
 
 Package: taggert
 Architecture: all
-Depends: ${python:Depends}, python-gi, python-pyexiv2, python-tz,
+Depends: ${python:Depends}, python-gi, gir1.2-gexiv2-0.4, python-tz,
   gir1.2-gtkchamplain-0.12, gir1.2-gtkclutter-1.0, ${misc:Depends}
 Description: GTK+ 3 geotagging application that utilizes a map or a GPS trace
  Taggert is an easy-to-use application for geotagging images, either manually,

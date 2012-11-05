@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 #   Copyright 2012 Martijn Grendelman <m@rtijn.net>
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +12,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from __future__ import print_function
+
 import os
 import fractions
 import time
 from math import modf
 
 import pytz
-import pyexiv2
+#import pyexiv2
 import xml.dom.minidom as minidom
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
 from gi.repository import Clutter
@@ -30,7 +30,9 @@ from gi.repository import Champlain
 from gi.repository import GdkPixbuf
 from gi.repository import Gio
 from gi.repository import GLib
+from gi.repository import GObject
 from gi.repository import Gdk
+from gi.repository import GExiv2
 from pprint import pprint
 
 from iso8601 import parse_date as parse_xml_date
@@ -412,63 +414,32 @@ class App(object):
                         data = None
                         modf = False
                         try:
-                            metadata = pyexiv2.ImageMetadata(fname)
-                            metadata.read()
+                            metadata = GExiv2.Metadata(fname)
                             # Get the camera make/model
-                            try:
-                                make = metadata['Exif.Image.Make'].value
-                                model = metadata['Exif.Image.Model'].value
-                                # Remove the 'make' from the 'model' if present
-                                camera = "%s %s" % (make, model.replace(make, '',1).strip())
-                            except KeyError:
-                                camera = ''
+                            camera = metadata.get_camera_model() or ''
                             # Get EXIF DateTime
-                            try:
-                                dtobj = metadata['Exif.Image.DateTime'].value
-                                #dt = metadata['Exif.Image.DateTime'].raw_value
+                            dtobj = metadata.get_date_time()
+                            if dtobj != None:
                                 dt = dtobj.strftime("%Y-%m-%d %H:%M:%S")
-                            except KeyError:
-                                dtobj = None
+                            else:
                                 dt = ''
                             # Get image orientation
-                            try:
-                                rot =  metadata['Exif.Image.Orientation'].raw_value
-                            except KeyError:
-                                rot = '1'
+                            #rot = metadata.get_orientation()
+                            rot = '1'
+
                             # Get GPS info
                             try:
                                 data = self.modified[fl]
                                 imglat = data['latitude']
+                                imglon = data['longitude']
+                                imgele = data['elevation']
                                 modf = True
                             except KeyError:
-                                try:
-                                    args1 = metadata['Exif.GPSInfo.GPSLatitude'].value
-                                    args2 = metadata['Exif.GPSInfo.GPSLatitudeRef'].value
-                                    args3 = args1 + [args2]
-                                    imglat = tfunctions.dms_to_decimal(*args3)
-                                except KeyError:
-                                    imglat = ''
-                            try:
-                                data = self.modified[fl]
-                                imglon = data['longitude']
-                            except KeyError:
-                                try:
-                                    args1 = metadata['Exif.GPSInfo.GPSLongitude'].value
-                                    args2 = metadata['Exif.GPSInfo.GPSLongitudeRef'].value
-                                    args3 = args1 + [args2]
-                                    imglon = tfunctions.dms_to_decimal(*args3)
-                                except KeyError:
+                                if 'Exif.GPSInfo.GPSLatitude' in metadata.get_tags():
+                                    imglon, imglat, imgele = [round(x,5) for x in metadata.get_gps_info()]
+                                else:
                                     imglon = ''
-                            try:
-                                data =  self.modified[fl]
-                                imgele = data['elevation']
-                            except KeyError:
-                                try:
-                                    imgele = float(metadata['Exif.GPSInfo.GPSAltitude'].value)
-                                    if int(metadata['Exif.GPSInfo.GPSAltitudeRef'].value) > 0:
-                                        imgele *= -1
-                                    imgele = str(imgele)
-                                except KeyError:
+                                    imglat = ''
                                     imgele = ''
 
                             if (not show_untagged_only) or imglat == '' or imglon == '' or data:
@@ -483,6 +454,9 @@ class App(object):
                             else:
                                 notshown += 1
 
+                        except GObject.GError:
+                            # Unsupported file format
+                            pass
                         except IOError:
                             # Unsupported file format
                             pass
@@ -989,7 +963,7 @@ class App(object):
                     if dt:
                         lat, lon, ele = self.gpx.find_coordinates(dt)
                         if lat and lon:
-                            #print "%s %.5f %.5f" % (filename, lat, lon)
+                            #print("%s %.5f %.5f" % (filename, lat, lon))
                             # Modify the coordinates
                             model[tree_iter][constants.images.columns.latitude] = "%.5f" % lat
                             model[tree_iter][constants.images.columns.longitude] = "%.5f" % lon
@@ -1077,33 +1051,17 @@ class App(object):
         fl = model.get_value(tree_iter, constants.images.columns.filename)
         if model.get_value(tree_iter, constants.images.columns.modified):
             fname = os.path.join(self.data.imagedir, fl)
-            metadata = pyexiv2.ImageMetadata(fname)
-            metadata.read()
+            metadata = GExiv2.Metadata(fname)
             try:
                 lat = float(model.get_value(tree_iter, constants.images.columns.latitude))
                 lon = float(model.get_value(tree_iter, constants.images.columns.longitude))
                 ele = float(model.get_value(tree_iter, constants.images.columns.elevation))
-                metadata['Exif.GPSInfo.GPSLatitude'] = tfunctions.decimal_to_dms(lat)
-                metadata['Exif.GPSInfo.GPSLongitude'] = tfunctions.decimal_to_dms(lon)
-                metadata['Exif.GPSInfo.GPSAltitude'] = tfunctions.float_to_fraction(ele)
-                metadata['Exif.GPSInfo.GPSLatitudeRef'] = 'N' if lat >= 0 else 'S'
-                metadata['Exif.GPSInfo.GPSLongitudeRef'] = 'E' if lon >= 0 else 'W'
-                metadata['Exif.GPSInfo.GPSAltitudeRef'] = '0' if ele >= 0 else '1'
-                metadata['Exif.GPSInfo.GPSMapDatum'] = 'WGS-84'
+                metadata.set_gps_info(lon, lat, ele)
             # If the tag is empty, the conversion to float will fail with a ValueError
             except ValueError:
-                try:
-                    del metadata['Exif.GPSInfo.GPSLatitude']
-                    del metadata['Exif.GPSInfo.GPSLongitude']
-                    del metadata['Exif.GPSInfo.GPSAltitude']
-                    del metadata['Exif.GPSInfo.GPSLatitudeRef']
-                    del metadata['Exif.GPSInfo.GPSLongitudeRef']
-                    del metadata['Exif.GPSInfo.GPSAltitudeRef']
-                    del metadata['Exif.GPSInfo.GPSMapDatum']
-                except KeyError:
-                    pass
+                metadata.delete_gps_info()
 
-            metadata.write()
+            metadata.save_file()
             model[tree_iter][5] = False  # saved => not modified
             del self.modified[fl]
             self.savecounter += 1
@@ -1649,7 +1607,7 @@ class App(object):
         elevation column in the images list accordingly
         """
         checked = self.builder.get_object("checkmenuitem3").get_active()
-        self.builder.get_object("treeview1").get_column(4).set_visible(checked)
+        self.builder.get_object("treeview1").get_column(5).set_visible(checked)
 
     def toggle_camera_column(self, widget=None):
         """
