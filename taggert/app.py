@@ -20,8 +20,6 @@ import time
 from math import modf
 
 import pytz
-#import pyexiv2
-import xml.dom.minidom as minidom
 from gi.repository import GtkClutter     # apt-get install gir1.2-clutter-1.0
 from gi.repository import Clutter
 from gi.repository import Gtk
