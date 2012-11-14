@@ -150,6 +150,7 @@ class App(object):
         self.settings.bind('show-elevation-column', self.builder.get_object("checkmenuitem3"), 'active')
         self.settings.bind('show-map-coords', self.builder.get_object("checkmenuitem9"), 'active')
         self.settings.bind('show-image-markers', self.builder.get_object("menuitem35"), 'active')
+        self.settings.bind('image-markers-draggable', self.builder.get_object("checkmenuitem10"), 'active')
 
     def setup_gui(self):
         """
@@ -223,6 +224,7 @@ class App(object):
             "checkmenuitem2_toggled": self.toggle_tracks,
             "checkmenuitem3_toggled": self.toggle_elevation,
             "checkmenuitem9_toggled": self.toggle_overlay,
+            "checkmenuitem10_toggled": self.toggle_imagemarker_draggable,
             "checkmenuitem37_toggled": self.toggle_camera_column,
             "treeview-selection1_changed": self.treeselect_changed,
             "treeview-selection2_changed": self.treeselect2_changed,
@@ -739,10 +741,14 @@ class App(object):
         """
         Place an ImageMarker on the map at the specified coordinates
         """
-        point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), self.imagemarker_clicked)
+        eventmap = {
+            "button-press": self.imagemarker_clicked,
+            "drag-finish": self.imagemarker_dragged,
+        }
+        point = imagemarker.ImageMarker(treeiter, filename, float(lat), float(lon), eventmap)
         point.set_color(tfunctions.clutter_color(self.imagemarker_color, self.imagemarker_opacity))
         point.set_size(self.data.imagemarkersize)
-        #point.set_draggable(True)
+        point.set_draggable(self.builder.get_object("checkmenuitem10").get_active())
         self.imagelayer.add_marker(point)
 
     def map_add_marker(self, _widget):
@@ -978,6 +984,7 @@ class App(object):
         Add a geotag with specified coordinates and elevation to all selected
         images
         """
+        arg_ele = ele
         treeselect = self.builder.get_object("treeview1").get_selection()
         model,pathlist = treeselect.get_selected_rows()
         if pathlist:
@@ -985,6 +992,8 @@ class App(object):
             for p in pathlist:
                 tree_iter = model.get_iter(p)
                 filename = model[tree_iter][constants.images.columns.filename]
+                if arg_ele == None:
+                    ele = float(model[tree_iter][constants.images.columns.elevation])
                 try:
                     model[tree_iter][constants.images.columns.latitude] = "%.5f" % float(lat)
                     model[tree_iter][constants.images.columns.longitude] = "%.5f" % float(lon)
@@ -1548,6 +1557,7 @@ class App(object):
         for m in self.imagelayer.get_markers():
             m.set_color(tfunctions.clutter_color(self.imagemarker_color, self.imagemarker_opacity))
             m.set_size(self.data.imagemarkersize)
+            m.set_draggable(self.builder.get_object("checkmenuitem10").get_active())
 
     def treeview_x_select_all(self, widget=None):
         """
@@ -1660,6 +1670,14 @@ class App(object):
             treeselect.unselect_all()
             treeselect.select_iter(marker.treeiter)
 
+    def imagemarker_dragged(self, marker, clutterevent, userdata=None):
+        # Make sure this is the only image selected, even if the CTRL key was used
+        treeselect = self.builder.get_object("treeview1").get_selection()
+        treeselect.unselect_all()
+        treeselect.select_iter(marker.treeiter)
+        lat, lon = (marker.get_latitude(), marker.get_longitude())
+        self.tag_selected(lat,lon,None)
+
     def move_imagemarker(self, tree_iter, filename, lat, lon):
         """
         Move the ImageMarker for the specified image by first removing it and
@@ -1692,3 +1710,6 @@ class App(object):
             if m.filename == filename:
                 return m
         return None
+
+    def toggle_imagemarker_draggable(self, widget=None):
+        self.update_imagemarker_appearance()

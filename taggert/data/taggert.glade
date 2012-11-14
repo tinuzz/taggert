@@ -1424,6 +1424,16 @@ Unchecked means 'ask every time'</property>
                       </object>
                     </child>
                     <child>
+                      <object class="GtkCheckMenuItem" id="checkmenuitem10">
+                        <property name="use_action_appearance">False</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Image markers are draggable</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="checkmenuitem10_toggled" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkSeparatorMenuItem" id="menuitem26">
                         <property name="use_action_appearance">False</property>
                         <property name="visible">True</property>

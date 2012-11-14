@@ -57,6 +57,10 @@
       <default>true</default>
       <summary>Wether to show markers on the map for images with geotags.</summary>
     </key>
+    <key type="b" name="image-markers-draggable">
+      <default>true</default>
+      <summary>Wether image markers on the map are draggable.</summary>
+    </key>
     <key type="a{ss}" name="bookmarks-names">
       <default>{"bookmark1": "Eiffel Tower", "bookmark2": "Taj Mahal"}</default>
       <summary>The names of user's bookmarks</summary>
