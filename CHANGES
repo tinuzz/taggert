@@ -3,6 +3,7 @@ v1.3 - unreleased
 
 - Replace pyexiv2 with GExiv2 (GObject Introspection)
 - Fix elevation column visibility bug
+- Use lxml.etree instead of xml.dom.minidom for importing GPX files
 
 v1.2 - 05 Nov 2012
 -----------------
