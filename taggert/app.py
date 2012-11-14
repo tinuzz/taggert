@@ -1210,14 +1210,16 @@ class App(object):
             i = 0
             self.builder.get_object('notebook1').set_current_page(1)
             self.update_gtk()
+            start = time.time()
             for filename in filenames:
                 # self.process_gpx returns the number of tracks
                 i += self.process_gpx(filename, self.data.tracktimezone)
+            end = time.time()
             if (len(filenames) == 1):
                 msg = os.path.basename(filename)
             else:
                 msg = "%d files" % len(filenames)
-            self.show_infobar ("%d %stracks added from '%s'" % (i, 'hidden ' if not self.show_tracks else '', msg))
+            self.show_infobar ("%d %stracks added from '%s' in %.2f seconds" % (i, 'hidden ' if not self.show_tracks else '', msg, end - start))
         chooser.destroy()
 
     def set_timezone_dialog(self, widget=None):

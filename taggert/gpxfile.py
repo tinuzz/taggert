@@ -2,6 +2,7 @@
 
 # gpximport.py - Used to import GPX XML files into applications
 # This file was taken from GPX Viewer and modified for Taggert
+# Later it was rewritten to use lxml.etree instead of xml.dom.minidom
 # Used and relicensed with explicit permission from copyright holder
 # GPX Viewer homepage: http://andrewgee.org/blog/projects/gpxviewer/
 #
@@ -21,7 +22,7 @@
 #   limitations under the License.
 
 from pprint import pprint
-import xml.dom.minidom as minidom
+from lxml import etree
 from iso8601 import parse_date as parse_xml_date
 from datetime import datetime, timedelta
 import uuid
@@ -39,20 +40,28 @@ class GPXfile(object):
     def import_gpx(self, filename, tz):
         self.tz = timezone(tz)
         self.delta = None
-        doc = minidom.parse(filename)
-        doce = doc.documentElement
-        if doce.nodeName != "gpx":
+
+        ## minidom
+        #doc = minidom.parse(filename)
+        #doce = doc.documentElement
+        #if doce.nodeName != "gpx":
+        #    raise Exception
+
+        # lxml
+        tree = etree.parse(filename)
+        root = tree.getroot()
+        if root.xpath('local-name()') != "gpx":
             raise Exception
 
         trace = {}
         trace['filename'] = filename
         trace['tracks'] = []
 
-        e = doce.childNodes
-        for node in e:
-            if node.nodeName == "metadata":
+        for node in root:
+            nodeName = node.xpath('local-name()')
+            if nodeName == "metadata":
                 trace['metadata'] = self.fetch_metadata(node)
-            if node.nodeName == "trk":
+            if nodeName == "trk":
                 track = self.fetch_track(node)
                 if not track["name"]:
                     track["name"] =  "%s [%d]" % (os.path.basename(filename), len(trace['tracks']) +1 )
@@ -99,99 +108,104 @@ class GPXfile(object):
         track['segments'] = []
         track['name'] = ''
         track['uuid'] = str(uuid.uuid4())
-        for tnode in node.childNodes:
-            if tnode.nodeName == "trkseg":
+        for tnode in node:
+            nodeName = tnode.xpath('local-name()')
+            if nodeName == "trkseg":
                 track_segment = self.fetch_track_segment(tnode)
                 if len(track_segment['points']) > 0:
-                    #track['segments'].append(self.fetch_track_segment(tnode))
                     track['segments'].append(track_segment)
-            elif tnode.nodeName == "name":
-                track["name"] = tnode.childNodes[0].nodeValue
+            elif nodeName == "name":
+                track["name"] = tnode.text
         return track
 
     def fetch_track_segment(self, tnode):
         trkseg = {}
         trkseg['points'] = []
-        for tsnode in tnode.childNodes:
-            if tsnode.nodeName == "trkpt":
+        for tsnode in tnode:
+            nodeName = tsnode.xpath('local-name()')
+            if nodeName == "trkpt":
                 trkseg['points'].append(self.fetch_track_point(tsnode))
         return trkseg
 
     def fetch_track_point(self, tsnode):
         point = {}
-        if tsnode.attributes["lat"] != "" and tsnode.attributes["lon"] != "":
-            point['lat'] = float(tsnode.attributes["lat"].value)
-            point['lon'] = float(tsnode.attributes["lon"].value)
+        if tsnode.get("lat") != "" and tsnode.get("lon") != "":
+            point['lat'] = float(tsnode.get("lat"))
+            point['lon'] = float(tsnode.get("lon"))
 
-        for tpnode in tsnode.childNodes:
-            if tpnode.nodeName == "ele":
-                point['ele'] = float(tpnode.childNodes[0].nodeValue)
-            elif tpnode.nodeName == "desc":
-                point['description'] = tpnode.childNodes[0].nodeValue
-            elif tpnode.nodeName == "time":
-                t0 = parse_xml_date(tpnode.childNodes[0].nodeValue)
+        for tpnode in tsnode:
+            nodeName = tpnode.xpath('local-name()')
+            if nodeName == "ele":
+                point['ele'] = float(tpnode.text)
+            elif nodeName == "desc":
+                point['description'] = tpnode.text
+            elif nodeName == "time":
+                t0 = parse_xml_date(tpnode.text)
                 if not self.delta:
                     # Use is_dst = False; this may give incorrect results if the first
                     # trackpoint's time ambiguous due to a DST transition
                     # Also, strip the timezone information for calculating the delta
                     self.delta = self.tz.utcoffset(t0.replace(tzinfo=None), False)
                 point['time'] = t0 + self.delta
-            elif tpnode.nodeName == "name":
-                point['name'] = tpnode.childNodes[0].nodeValue
+            elif nodeName == "name":
+                point['name'] = tpnode.text
         if not 'ele' in point:
             point['ele'] = 0.0
         return point
 
-
     def fetch_metadata(self, node):
         metadata = {}
-        for mnode in node.childNodes:
-            if mnode.nodeName == "name":
-                metadata['name'] = mnode.childNodes[0].nodeValue
+        for mnode in node:
+            nodeName = mnode.xpath('local-name()')
+            if nodeName == "name":
+                metadata['name'] = mnode.text
 
-            elif mnode.nodeName == "desc":
+            elif nodeName == "desc":
                 try:
-                    metadata['description'] = mnode.childNodes[0].nodeValue
+                    metadata['description'] = mnode.text
                 except:
                     metadata['description'] = "" #no description
 
-            elif mnode.nodeName == "time":
-                metadata['time'] = mnode.childNodes[0].nodeValue
+            elif nodeName == "time":
+                metadata['time'] = mnode.text
 
-            elif mnode.nodeName == "author":
+            elif nodeName == "author":
                 metadata['author'] = {}
-                for anode in mnode.childNodes:
-                    if anode.nodeName == "name":
-                        metadata['author']['name'] = anode.childNodes[0].nodeValue
-                    elif anode.nodeName == "email":
-                        metadata['author']['email'] = anode.childNodes[0].nodeValue
-                    elif anode.nodeName == "link":
-                        metadata['author']['link'] = anode.childNodes[0].nodeValue
+                for anode in mnode:
+                    anodeName = anode.xpath('local-name()')
+                    if anodeName == "name":
+                        metadata['author']['name'] = anode.text
+                    elif anodeName == "email":
+                        metadata['author']['email'] = anode.text
+                    elif anodeName == "link":
+                        metadata['author']['link'] = anode.text
 
-            elif mnode.nodeName == "copyright":
+            elif nodeName == "copyright":
                 metadata['copyright'] = {}
-                if mnode.attributes["author"].value != "":
-                    metadata['copyright']['author'] = mnode.attributes["author"].value
-                for cnode in mnode.childNodes:
-                    if cnode.nodeName == "year":
-                        metadata['copyright']['year'] = cnode.childNodes[0].nodeValue
-                    elif cnode.nodeName == "license":
-                        metadata['copyright']['license'] = cnode.childNodes[0].nodeValue
+                if mnode.get("author") != "":
+                    metadata['copyright']['author'] = mnode.get("author")
+                for cnode in mnode:
+                    cnodeName = cnode.xpath('local-name()')
+                    if cnodeName == "year":
+                        metadata['copyright']['year'] = cnode.text
+                    elif cnodeName == "license":
+                        metadata['copyright']['license'] = cnode.text
 
-            elif mnode.nodeName == "link":
+            elif nodeName == "link":
                 metadata['link'] = {}
-                if mnode.attributes["href"].value != "":
-                    metadata['link']['href'] = mnode.attributes["href"].value
-                for lnode in mnode.childNodes:
-                    if lnode.nodeName == "text":
-                        metadata['link']['text'] = lnode.childNodes[0].nodeValue
-                    elif lnode.nodeName == "type":
-                        metadata['link']['type'] = lnode.childNodes[0].nodeValue
+                if mnode.get("href") != "":
+                    metadata['link']['href'] = mnode.get("href")
+                for lnode in mnode:
+                    lnodeName = lnode.xpath('local-name()')
+                    if lnodeName == "text":
+                        metadata['link']['text'] = lnode.text
+                    elif lnodeName == "type":
+                        metadata['link']['type'] = lnode.text
 
-            elif mnode.nodeName == "time":
-                metadata['time'] = parse_xml_date(mnode.childNodes[0].nodeValue)
+            elif nodeName == "time":
+                metadata['time'] = parse_xml_date(mnode.text)
 
-            elif mnode.nodeName == "keywords":
-                metadata['keywords'] = mnode.childNodes[0].nodeValue
+            elif nodeName == "keywords":
+                metadata['keywords'] = mnode.text
 
         return metadata
