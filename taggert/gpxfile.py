@@ -41,12 +41,6 @@ class GPXfile(object):
         self.tz = timezone(tz)
         self.delta = None
 
-        ## minidom
-        #doc = minidom.parse(filename)
-        #doce = doc.documentElement
-        #if doce.nodeName != "gpx":
-        #    raise Exception
-
         # lxml
         tree = etree.parse(filename)
         root = tree.getroot()
