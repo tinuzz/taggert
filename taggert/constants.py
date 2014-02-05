@@ -31,8 +31,9 @@ class TracksColumns(object):
     starttime = 1
     endtime   = 2
     numpoints = 3
-    uuid      = 4
+    tid       = 4
     layer     = 5
+    distance  = 6
 
 class tracks(object):
     columns = TracksColumns()

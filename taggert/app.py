@@ -41,10 +41,9 @@ import imagemarker
 import constants
 import tdata
 import tfunctions
+import version
 
 GtkClutter.init([])
-
-VERSION = 1.2
 
 START  = Clutter.BinAlignment.START
 CENTER = Clutter.BinAlignment.CENTER
@@ -64,7 +63,7 @@ class App(object):
     modified = {}
     show_tracks = True
     show_camera = False
-    gpx = gpxfile.GPXfile()
+    gpx = None
     highlighted_tracks = []
     imagemarker_opacity = 128
 
@@ -75,6 +74,7 @@ class App(object):
         self.data_dir = data_dir
         self.args = args
         self.data = tdata.TData()
+        self.gpx = gpxfile.GPXfile(self.data_dir)
 
     def main(self):
         """
@@ -152,6 +152,9 @@ class App(object):
         self.settings.bind('show-image-markers', self.builder.get_object("menuitem35"), 'active')
         self.settings.bind('image-markers-draggable', self.builder.get_object("checkmenuitem10"), 'active')
 
+        if not os.path.isdir(self.data.imagedir):
+            self.data.imagedir = ""
+
     def setup_gui(self):
         """
         Initialize some GUI elements that depend on settings and which are
@@ -174,7 +177,7 @@ class App(object):
         self.builder.get_object("colorbutton2").set_color(self.track_default_color)
         self.builder.get_object("colorbutton3").set_color(self.track_highlight_color)
         self.builder.get_object("colorbutton4").set_color(self.imagemarker_color)
-        self.builder.get_object("aboutdialog1").set_version('v' + str(VERSION))
+        self.builder.get_object("aboutdialog1").set_version('v' + str(version.VERSION))
         self.builder.get_object("adjustment2").set_value(self.data.markersize)
         self.builder.get_object("adjustment3").set_value(self.data.trackwidth)
         self.builder.get_object("adjustment4").set_value(self.data.imagemarkersize)
@@ -416,7 +419,10 @@ class App(object):
                         try:
                             metadata = GExiv2.Metadata(fname)
                             # Get the camera make/model
-                            camera = metadata.get_camera_model() or ''
+                            try:
+                                camera = metadata.get_camera_model() or ''
+                            except AttributeError:
+                                camera = ''
                             # Get EXIF DateTime
                             dtobj = metadata.get_date_time()
                             if dtobj != None:
@@ -951,7 +957,7 @@ class App(object):
         tracks to all selected images
         """
         # Any tracks available?
-        if not len(self.gpx.gpxfiles):
+        if not len(self.gpx.tracks):
             self.show_infobar ("No tracks loaded, cannot tag images")
             return
         treeselect = self.builder.get_object("treeview1").get_selection()
@@ -1139,25 +1145,36 @@ class App(object):
         different Polygon for each track, and add the track to the liststore
         for the tracks list
         """
+        idx, msg = self.gpx.import_gpx(filename, tz)
+        if idx is False:
+            errmsg = ("Importing file '%s' failed with the following error:\n\n%s\n\n" +
+                "Please check if your file is a valid GPX file.") % (filename, msg)
+
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK, "Import error")
+            dialog.format_secondary_text(errmsg)
+            dialog.run()
+            dialog.destroy()
+            return False
         store = self.builder.get_object("liststore2")
-        idx = self.gpx.import_gpx(filename, tz)
         i = 0
-        for trk in self.gpx.gpxfiles[idx]['tracks']:
+        for tid, tobj in self.gpx.get_tracks(idx).iteritems():
+            trk = tobj.trk
             # Create a tracklayer for each track
             tracklayer = polygon.Polygon(width=self.data.get_property("trackwidth"))
             tracklayer.set_stroke_color(tfunctions.clutter_color(self.track_default_color))
-            t0 = trk["segments"][0]["points"][0]["time"]
-            tx = trk["segments"][-1]["points"][-1]["time"]
+            t0, tx = tobj.get_timestamps()
             p = 0
-            for segment in trk["segments"]:
-                for point in segment["points"]:
-                    p += 1
-                    tracklayer.append_point(point["lat"], point["lon"])
+
+            for point in tobj.get_points():
+                p += 1
+                tracklayer.append_point(float(point.get('lat')), float(point.get('lon')))
+
             store.append([
-                trk['name'],
+                tobj.get_name(),
                 t0.strftime("%Y-%m-%d %H:%M:%S"),
                 tx.strftime("%Y-%m-%d %H:%M:%S"),
-                p, trk["uuid"], tracklayer
+                p, tid, tracklayer, tobj.get_distance()
             ])
             self.osm.add_layer(tracklayer)
             if not self.show_tracks:
@@ -1181,17 +1198,20 @@ class App(object):
         col1 = Gtk.TreeViewColumn("Start time", renderer, text=1)
         col2 = Gtk.TreeViewColumn("End time", renderer, text=2)
         col3 = Gtk.TreeViewColumn("Points", renderer, text=3)
+        col4 = Gtk.TreeViewColumn("Distance", renderer, text=6)
 
         col0.set_sort_column_id(0)
         col1.set_sort_column_id(1)
         col2.set_sort_column_id(2)
         col3.set_sort_column_id(3)
+        col4.set_sort_column_id(4)
 
         tree = self.builder.get_object("treeview2")
         tree.append_column(col0)
         tree.append_column(col1)
         tree.append_column(col2)
         tree.append_column(col3)
+        tree.append_column(col4)
 
     def open_gpx(self, widget=None):
         """
@@ -1221,8 +1241,12 @@ class App(object):
             self.update_gtk()
             start = time.time()
             for filename in filenames:
-                # self.process_gpx returns the number of tracks
-                i += self.process_gpx(filename, self.data.tracktimezone)
+                # self.process_gpx returns the number of tracks or False in case of errors
+                i0 = self.process_gpx(filename, self.data.tracktimezone)
+		if i0 == False:
+                    continue
+                else:
+                    i += i0
             end = time.time()
             if (len(filenames) == 1):
                 msg = os.path.basename(filename)
@@ -1335,9 +1359,9 @@ class App(object):
                 tree_iter = model.get_iter(p)
                 tracklayer = model.get_value(tree_iter, constants.tracks.columns.layer)
                 tracklayer.destroy()
+                tid = model.get_value(tree_iter, constants.tracks.columns.tid)
+                self.gpx.remove_track(tid)
                 model.remove(tree_iter)
-                # TODO: remove track entry from self.gpx.gpxfiles[idx]['tracks']
-                #       problem: how to do this without iterating?
             self.show_infobar("%d tracks removed" % len(pathlist))
 
     def treeselect2_changed(self, treeselect):
@@ -1593,7 +1617,7 @@ class App(object):
             ele = model.get_value(tree_iter, constants.images.columns.elevation)
             self.latlon_buffer = (lat, lon, ele)
             if lat and lon:
-                self.latlon_buffer = (lat, lon, '')
+            #    self.latlon_buffer = (lat, lon, '')
                 msg = "coordinates %s,%s" % (lat,lon)
             else:
                 msg = "empty coordinates"

@@ -11,9 +11,8 @@
     <property name="type_hint">dialog</property>
     <property name="program_name">Taggert</property>
     <property name="version">#VERSION#</property>
-    <property name="copyright" translatable="yes">Copyright © 2012 Martijn Grendelman
-GPX import code Copyright © 2009 Andrew Gee
-ISO 8601 parser Copyright © 2007 Michael Twomey</property>
+    <property name="copyright" translatable="yes">Copyright © 2012-2014 Martijn Grendelman
+ISO 8601 parser Copyright © 2007-2013 Michael Twomey</property>
     <property name="comments" translatable="yes">A GTK+3 geotagging application</property>
     <property name="website">https://github.com/tinuzz/taggert/blob/master/README.md</property>
     <property name="website_label" translatable="yes">Homepage</property>
@@ -875,10 +874,12 @@ Unchecked means 'ask every time'</property>
       <column type="gchararray"/>
       <!-- column-name numpoints -->
       <column type="gint64"/>
-      <!-- column-name uuid -->
-      <column type="gchararray"/>
+      <!-- column-name tid -->
+      <column type="gint64"/>
       <!-- column-name tracklayer -->
       <column type="GObject"/>
+      <!-- column-name distance -->
+      <column type="gint64"/>
     </columns>
   </object>
   <object class="GtkListStore" id="liststore3">
