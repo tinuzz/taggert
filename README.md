@@ -39,7 +39,6 @@ The following software is needed to run Taggert:
 
 * Python (developed and currently only tested with v2.7)
 * PyGObject    (Debian: python-gi)
-* pyexiv2      (Debian: python-pyexiv2, homepage: http://tilloy.net/dev/pyexiv2/)
 * pytz         (Debian: python-tz) for timezone calculations
 
 and the following PyGObject introspection libraries:
@@ -51,12 +50,15 @@ and the following PyGObject introspection libraries:
 * GtkClutter   (Debian: gir1.2-gtkclutter-1.0)
 * GLib / Gio   (Debian: gir1.2-glib-2.0)
 * GdkPixbuf    (Debian: gir1.2-gdkpixbuf-2.0)
+* GExiv2       (Debian: gir1.2-gexiv2-0.4)
 
 and of course all of the dependencies of these packages, like libexiv2,
 libclutter, libchamplain, etc.
 
-Because Taggert uses 'pyexiv2', which hasn't been ported to Python 3, Taggert
-requires Python 2.7. Compatibility with Python 2.6 is untested.
+Taggert is developed and tested on Python 2.7. Compatibility with Python 2.6
+or Python 3 is untested. However, since this application was changed to use
+[GExiv2](https://wiki.gnome.org/Projects/gexiv2) instead of pyexiv2, Python 3
+support should no longer be a problem and is therefore on the roadmap.
 
 Installation
 ------------
@@ -71,7 +73,7 @@ program is part of the 'libglib2.0-bin' package.
 
 When all prerequisites are installed, you should be able to run Taggert:
 
-    ./taggert
+    ./taggert_run
 
 Packaging for Debian or Ubuntu
 ------------------------------
@@ -85,57 +87,56 @@ Credits
 -------
 
 Taggert is written and maintained by Martijn Grendelman <m@rtijn.net>. It was
-inspired heavily by GottenGeography [1], written by Robert Bruce Park, and his
-code was used as a starting point on some occasions.
+inspired heavily by [GottenGeography](https://github.com/robru/gottengeography),
+written by Robert Bruce Park, and his code was used as a starting point on some
+occasions.
 
-The code for parsing GPX files was taken from GPX Viewer [2], which was written
-by Andrew Gee and used with permission. I modified it slightly for use with
-Taggert.
+Earlier versions of Taggert used GPX parsing code from
+[GPX Viewer](http://andrewgee.org/blog/projects/gpxviewer/), which
+was written by Andrew Gee and used with permission. For version 1.3, GPX
+parsing, validating and storage is now all done with lxml.etree and Andrew
+Gee's code is no longer used.
 
-The bundled code for parsing ISO8601 date strings comes from the 'pyiso8601'
-module, hosted on Google Code [3] and is copyright (C) 2007 Michael Twomey.
+The bundled code for parsing ISO8601 date strings comes from [the 'pyiso8601'
+module, hosted on Bitbucket](https://bitbucket.org/micktwomey/pyiso8601)
+and is copyright (C) 2007-2013 Michael Twomey.
 
 Taggert's application icon was created by Martijn Grendelman, by combining parts
-from two different icons from OSA Icon Library 11.02 [7].
+from two different icons from
+[OSA Icon Library 11.02](http://www.opensecurityarchitecture.org/cms/library/icon-library).
 
-The first incarnation of Taggert was based on osm-gps-map [4] rather than
-libchamplain and its code was based on the bundled mapviewer example [5],
+The first incarnation of Taggert was based on
+[osm-gps-map](http://nzjrs.github.com/osm-gps-map/) rather than
+libchamplain and its code was based on the bundled
+[mapviewer example](x<https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py),
 written by Hadley Rich. I don't think that any code written by Hadley Rich
 is present in the current version of Taggert.
 
 Taggert is licensed under the Apache License, version 2.0. A copy of the
-license can be found in the 'COPYING' file and on the web [6].
-
-* [1] <https://github.com/robru/gottengeography>
-* [2] <http://andrewgee.org/blog/projects/gpxviewer/>
-* [3] <http://code.google.com/p/pyiso8601/>
-* [4] <http://nzjrs.github.com/osm-gps-map/>
-* [5] <https://github.com/nzjrs/osm-gps-map/blob/master/examples/mapviewer.py>
-* [6] <http://www.apache.org/licenses/LICENSE-2.0>
-* [7] <http://www.opensecurityarchitecture.org/cms/library/icon-library>
+license can be found in the 'COPYING' file and
+[on the web](http://www.apache.org/licenses/LICENSE-2.0).
 
 Roadmap
 -------
 
 * Support for more GPS file formats. Only GPX is supported now.
-* Editing and exporting GPS tracks
+* Analyzing, editing and exporting GPS tracks
+* More extensive bookmark management, for example import from and export to GPX waypoints
 * Tools to correct DateTime tags on images, to fix deviations in your camera's clock.
 * Python 3 support
 
-Robert Bruce Park, who created GottenGeography, also created GObject
-Introspection data for 'gexiv2' [8], making this GObject wrapper usable from
-Python, including version 3. His work has been merged with upstream gexiv2
-and should appear in gexiv2 version 0.5.0.
+Robert Bruce Park, who created GottenGeography, also created [GObject
+Introspection data for 'gexiv2'](https://wiki.gnome.org/Projects/gexiv2),
+making this GObject wrapper usable from Python, including version 3. His work
+has been merged with upstream gexiv2 and appeared in gexiv2 version 0.5.0.
+Taggert has been rewritten to use gexiv2, which will also allow for Python 3
+support.
 
-When gexiv2 v0.5.0 or greater is available for Debian, Taggert will be
-rewritten to use that, rather than pyexiv2.
-
-* [8] <http://redmine.yorba.org/projects/gexiv2/wiki>
 
 History
 -------
-2012-10-15   Released version 1.0
-2012-10-24   Released version 1.1
 2012-11-05   Released version 1.2
+2012-10-24   Released version 1.1
+2012-10-15   Released version 1.0
 
-See 'Changelog' for a summary of changes for each version.
+See 'CHANGES' for a summary of changes for each version.

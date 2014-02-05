@@ -6,6 +6,11 @@ v1.3 - unreleased
 - Use lxml.etree instead of xml.dom.minidom for importing GPX files
 - Implement updating image locations by dragging their marker on the map
 - Image markers can be draggable or not, settable by a View menu item
+- Keep GPX files in lxml.etree Elements, don't parse to lists/dicts
+- GPX files are validated against GPX 1.1 schema, refuse to import invalid GPX
+- Fix crash with non-existent cached image directory
+- Better error handling in several places
+- Add a 'Distance' column to the Tracks tab, shows track distance in meters
 
 v1.2 - 05 Nov 2012
 -----------------
