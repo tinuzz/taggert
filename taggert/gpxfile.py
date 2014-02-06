@@ -171,10 +171,31 @@ class GPXfile(object):
         self.tree.write(fname, xml_declaration = True, encoding='utf-8')
 
     def find_coordinates(self, dt):
-        lat = None
-        lon = None
-        ele = None
+        lat = lon = None
+        ele = 0.0
+        latx = lonx = elex = None
         for tid, tobj in self.tracks.iteritems():
             if dt >= tobj.starttime and dt <= tobj.endtime:
-                pprint(tobj)
+                for p in tobj.get_points():
+                    try:
+                        if latx is None:
+                            latx = float(p.get('lat'))
+                            lonx = float(p.get('lon'))
+                            elex = float(p.findtext(self.ns + 'ele'))
+                        t0 = parse_xml_date(p.findtext(self.ns + 'time')).replace(tzinfo=None)
+                        delta = self.tz.utcoffset(t0, False)
+                        t0 += delta
+                        if t0 > dt:
+                            lat = (latx + float(p.get('lat'))) / 2
+                            lon = (lonx + float(p.get('lon'))) / 2
+                            ele = (elex + float(p.findtext(self.ns + 'ele'))) / 2
+                            break
+                        else:
+                            latx = float(p.get('lat'))
+                            lonx = float(p.get('lon'))
+                            elex = float(p.findtext(self.ns + 'ele'))
+                    except Exception:
+                        latx = lonx = elex = None
+                        pass
 
+        return (lat,lon,ele)
