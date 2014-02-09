@@ -38,7 +38,6 @@ class Track(object):
     starttime = None
     endtime = None
     distance = None
-    ns = '{http://www.topografix.com/GPX/1/1}'
 
     def __init__(self, tid, trk=None, tz=None):
         self.tid =  tid
@@ -48,10 +47,16 @@ class Track(object):
             self.tz = tz
 
     def set_track(self, trk):
+        """
+        Setter for the trk attribute
+        """
         self.trk = trk
 
     def parse_timestamps(self):
-        alltimes = self.trk.findall(self.ns + 'trkseg/' + self.ns + 'trkpt/' + self.ns + 'time')
+        """
+        Update data from <time> elements found within the track
+        """
+        alltimes = self.trk.findall(ns + 'trkseg/' + ns + 'trkpt/' + ns + 'time')
         starttime = parse_xml_date(alltimes[0].text).replace(tzinfo=None)
         endtime = parse_xml_date(alltimes[-1].text).replace(tzinfo=None)
         delta = self.tz.utcoffset(starttime, False)
@@ -69,11 +74,17 @@ class Track(object):
         return self.starttime
 
     def get_name(self):
-        return self.trk.findtext(self.ns + 'name') or \
+        """
+        Return the contents of the <name> element if present, or a generated track name
+        """
+        return self.trk.findtext(ns + 'name') or \
             self.get_starttime().strftime('%Y-%m-%d %H:%M:%S')
 
     def get_points(self):
-        return self.trk.findall(self.ns + 'trkseg/' + self.ns + 'trkpt')
+        """
+        Return al track points from the track
+        """
+        return self.trk.findall(ns + 'trkseg/' + ns + 'trkpt')
 
     def trkpt_distance(self, lat1, lon1, lat2, lon2):
         radius = 6371000 # meter
@@ -88,10 +99,13 @@ class Track(object):
         return d
 
     def get_distance(self):
+        """
+        Calculate the total distance of the track by iterating over all track points
+        """
         if self.distance is None:
             distance = 0
             oldlat = None
-            for trkpt in self.trk.findall(self.ns + 'trkseg/' + self.ns + 'trkpt'):
+            for trkpt in self.trk.findall(ns + 'trkseg/' + ns + 'trkpt'):
                 lat = float(trkpt.get('lat'))
                 lon = float(trkpt.get('lon'))
                 if oldlat != None:
@@ -134,13 +148,23 @@ class GPXfile(object):
             self.tree = tree
 
         root = tree.getroot()
-        return (self.parse_tracks(root), 'Success')
+        return self.parse_tracks(root)
 
     def parse_tracks(self, root):
+        """
+        Parse <trk> elements from a given XML tree, create Track instances
+        for them and store references.
+        Make sure the list of parsed tracks does not grow larger than 40,
+        because it leads to a 'Bus Error', crashing the program.
+        """
         dest_root = self.tree.getroot()
         ids = []
-        tracks = root.findall(self.ns + 'trk')
+        tracks = root.findall(ns + 'trk')
+        msg = ''
         for trk in tracks:
+            if len(self.tracks) >= 40:
+                msg = 'Track list too long'
+                break
             # Copy the <trk> element to the XML tree
             trk2 = copy.deepcopy(trk)
             dest_root.append(trk2)
@@ -150,7 +174,7 @@ class GPXfile(object):
             self.tracks[tid] = tobj
             ids.append(tid)
         # Return a list of newly added track ids
-        return ids
+        return (ids, msg)
 
     # Return a dict of track objects
     def get_tracks(self, id_list):
@@ -182,19 +206,19 @@ class GPXfile(object):
                         if latx is None:
                             latx = float(p.get('lat'))
                             lonx = float(p.get('lon'))
-                            elex = float(p.findtext(self.ns + 'ele'))
-                        t0 = parse_xml_date(p.findtext(self.ns + 'time')).replace(tzinfo=None)
+                            elex = float(p.findtext(ns + 'ele'))
+                        t0 = parse_xml_date(p.findtext(ns + 'time')).replace(tzinfo=None)
                         delta = self.tz.utcoffset(t0, False)
                         t0 += delta
                         if t0 > dt:
                             lat = (latx + float(p.get('lat'))) / 2
                             lon = (lonx + float(p.get('lon'))) / 2
-                            ele = (elex + float(p.findtext(self.ns + 'ele'))) / 2
+                            ele = (elex + float(p.findtext(ns + 'ele'))) / 2
                             break
                         else:
                             latx = float(p.get('lat'))
                             lonx = float(p.get('lon'))
-                            elex = float(p.findtext(self.ns + 'ele'))
+                            elex = float(p.findtext(ns + 'ele'))
                     except Exception:
                         latx = lonx = elex = None
                         pass
