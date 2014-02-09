@@ -26,10 +26,11 @@ import os.path
 import copy
 import version
 
-ns = '{http://www.topografix.com/GPX/1/1}'
+nsuri = 'http://www.topografix.com/GPX/1/1'
+ns = '{' + nsuri + '}'
 minimal_xml = """<gpx xmlns="%s" version="1.1" creator="Taggert v%s">
 </gpx>
-""" % (ns, version.VERSION)
+""" % (nsuri, version.VERSION)
 
 class Track(object):
     """
