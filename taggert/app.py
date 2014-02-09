@@ -58,6 +58,7 @@ class App(object):
     clicked_lon = 0.0
     default_map_id = 'osm-mapnik'
     bookmarks = {}
+    bm_file = None
     #cameras = {}
     last_clicked_bookmark = None
     modified = {}
@@ -114,16 +115,14 @@ class App(object):
         self.settings = tsettings.TSettings('com.tinuzz.taggert')
 
         # Bookmarks
-        bm_names = self.settings.get_unpacked('bookmarks-names')
-        bm_latitudes = self.settings.get_unpacked('bookmarks-latitudes')
-        bm_longitudes = self.settings.get_unpacked('bookmarks-longitudes')
-
-        for key, name in bm_names.items():
-            self.bookmarks[key] = {
-                "name": name,
-                "latitude": bm_latitudes[key],
-                "longitude": bm_longitudes[key]
-                }
+        bookmarks_filename = os.path.join(os.path.expanduser('~'), '.taggert', 'bookmarks.gpx')
+        try:
+            os.makedirs(os.path.dirname(bookmarks_filename))
+        except OSError as e:
+            if e.errno != 17:
+                raise
+            pass
+        self.bm_file = gpxfile.Bookmarksfile(bookmarks_filename)
 
         # Home location
         self.home_location = self.settings.get_unpacked('home-location')
@@ -840,16 +839,13 @@ class App(object):
         response = dialog.run()
         dialog.hide()
         if response == Gtk.ResponseType.OK:
-            bm_id = "bookmark%d" % (len(self.bookmarks) + 1)
             bookmark = {
                  "name":      self.builder.get_object("entry1").get_text(),
                  "latitude":  float(self.builder.get_object("entry2").get_text()),
                  "longitude": float(self.builder.get_object("entry3").get_text())
             }
-            self.bookmarks[bm_id] = bookmark
-
+            self.bm_file.add(bookmark)
         self.reload_bookmarks()
-        self.save_bookmarks()
 
     def reload_bookmarks(self):
         """
@@ -868,32 +864,15 @@ class App(object):
                 continue
             entry.destroy()
 
-        # Now add bookmarks as menuitems, sorted by name
-        for bm_id, bm in sorted(self.bookmarks.items(), key=lambda (k,v): (v["name"].lower(),k)):
+        # Now add bookmarks as menuitems, sorted by lower cased name
+        for bm_id, bm in sorted(self.bm_file.bookmarks.items(), key=lambda (k,v): (v["name"].lower(),k)):
             item = Gtk.MenuItem()
             item.set_label(bm['name'])
             item.set_name(bm_id)
             item.connect("button-press-event", self.handle_bookmark_click)
+            item.connect("activate", self.handle_bookmark_activate)
             menu.append(item)
             item.show()
-
-    def save_bookmarks(self):
-        """
-        Save bookmarks to TSettings
-        """
-        names = {}
-        latitudes = {}
-        longitudes = {}
-        for key,bm in self.bookmarks.items():
-            names[key] = bm['name']
-            latitudes[key] = bm['latitude']
-            longitudes[key] = bm['longitude']
-        v1 = GLib.Variant('a{ss}', names)
-        v2 = GLib.Variant('a{sd}', latitudes)
-        v3 = GLib.Variant('a{sd}', longitudes)
-        self.settings.set_value("bookmarks-names", v1)
-        self.settings.set_value("bookmarks-latitudes", v2)
-        self.settings.set_value("bookmarks-longitudes", v3)
 
     def go_to_bookmark(self, widget):
         """
@@ -901,7 +880,7 @@ class App(object):
         the map view on it
         """
         bm_id = widget.get_name()
-        self.add_marker_at(self.bookmarks[bm_id]['latitude'], self.bookmarks[bm_id]['longitude'])
+        self.add_marker_at(self.bm_file.bookmarks[bm_id]['latitude'], self.bm_file.bookmarks[bm_id]['longitude'])
         self.go_to_marker()
 
     def go_to_image(self, widget):
@@ -920,6 +899,9 @@ class App(object):
             if lat and lon:
                 self.add_marker_at(float(lat),float(lon))
                 self.go_to_marker()
+
+    def handle_bookmark_activate(self, widget):
+        self.go_to_bookmark(widget)
 
     def handle_bookmark_click(self, widget, event):
         """
@@ -941,8 +923,7 @@ class App(object):
         """
         bm_id = self.last_clicked_bookmark.get_name()
         self.last_clicked_bookmark.destroy()
-        del self.bookmarks[bm_id]
-        self.save_bookmarks()
+        self.bm_file.delete(bm_id)
 
     def tag_selected_from_marker(self, widget):
         """

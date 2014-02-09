@@ -11,6 +11,8 @@ v1.3 - unreleased
 - Fix crash with non-existent cached image directory
 - Better error handling in several places
 - Add a 'Distance' column to the Tracks tab, shows track distance in meters
+- Add some Mapbox maps
+- Store bookmarks in a GPX file instead of GSettings (~/.taggert/bookmarks.gpx)
 
 v1.2 - 05 Nov 2012
 -----------------

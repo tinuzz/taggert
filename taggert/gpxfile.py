@@ -26,9 +26,10 @@ import os.path
 import copy
 import version
 
-minimal_xml = """<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Taggert v%s">
+ns = '{http://www.topografix.com/GPX/1/1}'
+minimal_xml = """<gpx xmlns="%s" version="1.1" creator="Taggert v%s">
 </gpx>
-""" % version.VERSION
+""" % (ns, version.VERSION)
 
 class Track(object):
     tid = None
@@ -199,3 +200,91 @@ class GPXfile(object):
                         pass
 
         return (lat,lon,ele)
+
+class Bookmarksfile(object):
+    """
+    An object representing a bookmarks file, which is a GPX file containing
+    <wpt> elements. The bookmarks are kept in a dictionary for easy mapping to
+    GtkMenuItems, and only converted to an XML tree when saving to disk.
+    """
+
+    tree = None
+    filename = None
+    bookmarks = {}
+
+    def __init__(self, filename):
+        """
+        Import a GPX file containing waypoints. Silenty ignore failure.
+        """
+        self.filename = filename
+        try:
+            tree = etree.parse(self.filename)
+            self.parse_wpt(tree)
+        except Exception as e:
+            pass
+
+    def parse_wpt(self, tree):
+        """
+        Construct a dictionary from <wpt> elements from a given ElementTree
+        """
+        root = tree.getroot()
+        waypoints = root.findall(ns + 'wpt')
+        for wpt in waypoints:
+            # If lat/lon cannot be converted to float, skip this entry
+            try:
+                bookmark = {}
+                bookmark['name'] = wpt.findtext(ns + 'name')
+                bookmark['latitude'] = float(wpt.get('lat'))
+                bookmark['longitude'] = float(wpt.get('lon'))
+            except ValueError:
+                continue
+            self.bookmarks[self.make_bm_id()] = bookmark
+
+    def save(self):
+        """
+        Save the internal bookmarks dictionary to a GPX file, converting
+        bookmark names to unicode on the fly
+        """
+        tree = etree.ElementTree(etree.fromstring(minimal_xml))
+        root = tree.getroot()
+        for bm_id, bm in self.bookmarks.items():
+            wpt = etree.Element(ns + 'wpt', lat=str(bm['latitude']), lon=str(bm['longitude']))
+            name = etree.Element(ns + 'name')
+            if isinstance(bm['name'], unicode):
+                name.text = bm['name']
+            else:
+                name.text = bm['name'].decode('utf-8')
+            wpt.append(name)
+            root.append(wpt)
+        tree.write(self.filename, xml_declaration = True, encoding='utf-8')
+
+    def add(self, bookmark):
+        """
+        Add a bookmark and save
+        """
+        self.bookmarks[self.make_bm_id()] = bookmark
+        self.save()
+
+    def delete(self, bm_id):
+        """
+        Delete a bookmark and save
+        """
+        if bm_id in self.bookmarks:
+            del(self.bookmarks[bm_id])
+            self.save()
+
+    def make_bm_id(self):
+        """
+        Generate a simple ID for a new bookmark, to be used as the name of
+        the corresponding GtkMenuItem
+        """
+        return "bookmark%d" % (len(self.bookmarks) + 1)
+
+    def find(self, name):
+        """
+        Find bookmarks by name in an ElementTree using XPath
+        Method is not currently in use
+        """
+        nsmap = {'ns0': ns}
+        wpt = self.tree.xpath("/ns0:gpx/ns0:wpt[descendant::ns0:name[contains(., \"%s\")]]" % name,
+                namespaces=nsmap)
