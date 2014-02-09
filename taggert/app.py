@@ -1196,20 +1196,21 @@ class App(object):
         """
         Initialize the tracks list
         """
-        self.builder.get_object("liststore2").set_sort_column_id(1,  Gtk.SortType.ASCENDING)
+        self.builder.get_object("liststore2").set_sort_column_id(constants.tracks.columns.starttime,
+                                                                 Gtk.SortType.ASCENDING)
         renderer = Gtk.CellRendererText()
         #renderer.set_property('cell-background', 'yellow')
-        col0 = Gtk.TreeViewColumn("Name", renderer, text=0)
-        col1 = Gtk.TreeViewColumn("Start time", renderer, text=1)
-        col2 = Gtk.TreeViewColumn("End time", renderer, text=2)
-        col3 = Gtk.TreeViewColumn("Points", renderer, text=3)
-        col4 = Gtk.TreeViewColumn("Distance", renderer, text=6)
+        col0 = Gtk.TreeViewColumn("Name", renderer, text=constants.tracks.columns.name)
+        col1 = Gtk.TreeViewColumn("Start time", renderer, text=constants.tracks.columns.starttime)
+        col2 = Gtk.TreeViewColumn("End time", renderer, text=constants.tracks.columns.endtime)
+        col3 = Gtk.TreeViewColumn("Points", renderer, text=constants.tracks.columns.numpoints)
+        col4 = Gtk.TreeViewColumn("Distance", renderer, text=constants.tracks.columns.distance)
 
-        col0.set_sort_column_id(0)
-        col1.set_sort_column_id(1)
-        col2.set_sort_column_id(2)
-        col3.set_sort_column_id(3)
-        col4.set_sort_column_id(4)
+        col0.set_sort_column_id(constants.tracks.columns.name)
+        col1.set_sort_column_id(constants.tracks.columns.starttime)
+        col2.set_sort_column_id(constants.tracks.columns.endtime)
+        col3.set_sort_column_id(constants.tracks.columns.numpoints)
+        col4.set_sort_column_id(constants.tracks.columns.distance)
 
         tree = self.builder.get_object("treeview2")
         tree.append_column(col0)
