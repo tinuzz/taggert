@@ -1248,7 +1248,7 @@ class App(object):
             for filename in filenames:
                 # self.process_gpx returns the number of tracks or False in case of errors
                 i0 = self.process_gpx(filename, self.data.tracktimezone)
-		if i0 == False:
+                if i0 == False:
                     continue
                 else:
                     i += i0
