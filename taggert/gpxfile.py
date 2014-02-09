@@ -32,6 +32,10 @@ minimal_xml = """<gpx xmlns="%s" version="1.1" creator="Taggert v%s">
 """ % (ns, version.VERSION)
 
 class Track(object):
+    """
+    An object representing a track. It holds a reference to a <trk> element
+    and some metadata.
+    """
     tid = None
     trk = None
     tz = timezone('UTC')     # a pytz timezone object
@@ -40,6 +44,10 @@ class Track(object):
     distance = None
 
     def __init__(self, tid, trk=None, tz=None):
+        """
+        Initialize the track object and optionally set the 'trk' element and
+        timezone object
+        """
         self.tid =  tid
         if trk is not None:
             self.set_track(trk)
@@ -64,11 +72,17 @@ class Track(object):
         self.endtime = endtime + delta
 
     def get_timestamps(self):
+        """
+        Return the track's start and endtime. Calculate those times if necessary.
+        """
         if self.starttime is None:
             self.parse_timestamps()
         return (self.starttime, self.endtime)
 
     def get_starttime(self):
+        """
+        Return the track's starttime. Calculate it is necessary.
+        """
         if self.starttime is None:
             self.parse_timestamps()
         return self.starttime
@@ -87,6 +101,9 @@ class Track(object):
         return self.trk.findall(ns + 'trkseg/' + ns + 'trkpt')
 
     def trkpt_distance(self, lat1, lon1, lat2, lon2):
+        """
+        Calculate and return the distance in meters between two track points
+        """
         radius = 6371000 # meter
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
 
@@ -116,6 +133,10 @@ class Track(object):
         return self.distance
 
 class GPXfile(object):
+    """
+    An object holding references to all loaded tracks, providing methods for
+    importing and validating GPX files from disk
+    """
 
     delta = None  # a timedelta object
     tz = None     # a pytz timezone object
@@ -128,12 +149,18 @@ class GPXfile(object):
     tracks = {}
 
     def __init__(self, data_dir):
+        """
+        Initialize the object and create an XML parser using the GPX schema
+        """
         self.data_dir = data_dir
         self.schemafile = os.path.join(self.data_dir, 'gpx.xsd')
         self.schema = etree.XMLSchema(file=self.schemafile)
         self.xmlparser = etree.XMLParser(schema=self.schema)
 
     def import_gpx(self, filename, tz):
+        """
+        Read a GPX file from disk and parse it
+        """
         self.tz = timezone(tz)
         self.delta = None
 
@@ -176,26 +203,34 @@ class GPXfile(object):
         # Return a list of newly added track ids
         return (ids, msg)
 
-    # Return a dict of track objects
     def get_tracks(self, id_list):
+        """
+        Return a dict of track objects for a given list of ids
+        """
         return { k: v for k, v in self.tracks.iteritems() if k in id_list }
 
-    # Find the XML tree that contains the track with a given tid
-    # and remove the track from it
     def remove_track(self, tid):
+        """
+        Remove a track from the XML tree and from the reference-dictionary
+        """
         if tid in self.tracks:
             trk = self.tracks[tid].trk
             root = self.tree.getroot()
             root.remove(trk)
             del self.tracks[tid]
 
-    # Dump the currently loaded tracks to a GPX file
     def save_gpx(self, fname=None):
+        """
+        Dump the currently loaded tracks to a GPX file
+        """
         if fname is None:
             fname = 'zzzzzzzzzzz.gpx'
         self.tree.write(fname, xml_declaration = True, encoding='utf-8')
 
     def find_coordinates(self, dt):
+        """
+        Find a coordinate for a given DateTime, used for tagging images
+        """
         lat = lon = None
         ele = 0.0
         latx = lonx = elex = None
