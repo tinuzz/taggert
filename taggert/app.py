@@ -515,15 +515,20 @@ class App(object):
             'http://www.gnu.org/copyleft/fdl.html',
             'http://maps-for-free.com/layer/relief/z#Z#/row#Y#/#Z#_#X#-#Y#.jpg'],
 
-            ['mapbox-streets', 'Mapbox Streets', 0, 17, 256,
+            ['mapbox-streets', 'Mapbox Streets', 0, 19, 256,
             'Mapbox',
             'http://www.gnu.org/copyleft/fdl.html',
-            'http://a.tiles.mapbox.com/v3/mapbox.mapbox-streets/#Z#/#X#/#Y#.png'],
+            'http://a.tiles.mapbox.com/v3/examples.map-vyofok3q/#Z#/#X#/#Y#.png'],
 
-            #['mapbox-natural-earth', 'Mapbox Natural Earth', 0, 6, 256,
-            #'Mapbox',
-            #'http://www.gnu.org/copyleft/fdl.html',
-            #'http://a.tiles.mapbox.com/v3/mapbox.natural-earth-2/#Z#/#X#/#Y#.png'],
+            ['mapbox-terrain', 'Mapbox Terrain', 0, 19, 256,
+            'Mapbox',
+            'http://www.gnu.org/copyleft/fdl.html',
+            'http://a.tiles.mapbox.com/v3/examples.map-9ijuk24y/#Z#/#X#/#Y#.png'],
+
+            ['mapbox-satellite', 'Mapbox Satellite', 0, 19, 256,
+            'Mapbox',
+            'http://www.gnu.org/copyleft/fdl.html',
+            'http://a.tiles.mapbox.com/v3/examples.map-qfyrx5r8/#Z#/#X#/#Y#.png'],
 
             ['stamen-watercolor', 'Stamen Watercolor', 0, 17, 256,
             'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA',
