@@ -61,18 +61,6 @@
       <default>true</default>
       <summary>Wether image markers on the map are draggable.</summary>
     </key>
-    <key type="a{ss}" name="bookmarks-names">
-      <default>{"bookmark1": "Eiffel Tower", "bookmark2": "Taj Mahal"}</default>
-      <summary>The names of user's bookmarks</summary>
-    </key>
-    <key type="a{sd}" name="bookmarks-latitudes">
-      <default>{"bookmark1": 48.857995, "bookmark2": 27.17267}</default>
-      <summary>The latitudes of user's bookmarks</summary>
-    </key>
-    <key type="a{sd}" name="bookmarks-longitudes">
-      <default>{"bookmark1": 2.294759, "bookmark2": 78.042895}</default>
-      <summary>The longitudes of user's bookmarks</summary>
-    </key>
     <key type="s" name="last-image-dir">
       <default>""</default>
       <summary>The directory that was used last to look for images.</summary>
