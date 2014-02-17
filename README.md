@@ -4,6 +4,8 @@ Taggert
 Taggert is a GTK+ geotagging application, written in Python. It uses PyGObject
 and as such needs GTK+ >= 3.0. Taggert is not compatible with GTK+ 2.x.
 
+![Taggert](doc/screenshot-small.png)
+
 Usage
 -----
 
