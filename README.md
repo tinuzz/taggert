@@ -88,7 +88,7 @@ working package.
 Credits
 -------
 
-Taggert is written and maintained by Martijn Grendelman <m@rtijn.net>. It was
+Taggert is written and maintained by Martijn Grendelman &lt;m@rtijn.net&gt; It was
 inspired heavily by [GottenGeography](https://github.com/robru/gottengeography),
 written by Robert Bruce Park, and his code was used as a starting point on some
 occasions.
