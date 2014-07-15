@@ -1134,7 +1134,8 @@ class App(object):
         idx, msg = self.gpx.import_gpx(filename, tz)
         if idx is False:
             errmsg = ("Importing file '%s' failed with the following error:\n\n%s\n\n" +
-                "Please check if your file is a valid GPX file.") % (filename, msg)
+                "Please check if your file is a valid GPX 1.1 file. " +
+                "Other GPX versions are not supported.") % (filename, msg)
 
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR,
                 Gtk.ButtonsType.OK, "Import error")
